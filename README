@@ -1,0 +1,43 @@
+ORACLE cloud API tools
+
+opc_compute.sh opc_storage.sh
+
+There is some idea and solution for Oracle Cloud Service API and network.
+Just being adhook hack, it is not for sale and no warranty.
+But It is usefull for POC or understanding how to use Oracle Cloud Service.
+
+1. make config file like this.
+
+CONFIG_FILE
+-------------------------------
+IAAS_URL="https://api.compute.us0.oraclecloud.com"
+OPC_DOMAIN="your_domain"
+OPC_ACCOUNT="your_account"
+OPC_PASS="password"
+-------------------------------
+
+
+2. set parameter in opc_compute.sh
+
+   CONF_FILE_DIR="$HOME/bin"
+   ADJ_TIME=9000
+
+ CONF_FILE_DIR
+
+  CONF_FILE_DIR is where opc_compute.sh deployed.
+
+ ADJ_TIME
+
+  There is difference between Oracle Cloud server's unix time and
+  your terminal's unix time.
+  The cookie's life time is 30 minites(1800 seconds)
+
+  $EPOC is Oracle Cloud server's unix time.
+  $epoc is your terminal's unix time.
+
+  There is echo and date options in get_cookie().
+
+3. command line
+
+   $ opc_compute.sh -l CONFIG_FILE show
+

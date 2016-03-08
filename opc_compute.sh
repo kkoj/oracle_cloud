@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-03-07 23:43:54 katsu> 
+## Time-stamp: <2016-03-08 09:11:40 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -10,8 +10,8 @@
 ## "base64"
 
 #CURL="curl --trace-ascii erlog "
-#CURL="curl -s -x http://your.proxy:80"
-CURL="curl -s "
+CURL="curl -s -x http://your.proxy:80"
+#CURL="curl -s "
 JQ="jq . "
 
 ##
