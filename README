@@ -1,7 +1,3 @@
-ORACLE cloud API tools
-
-opc_compute.sh opc_storage.sh
-
 There is some idea and solution for Oracle Cloud Service API and network.
 Just being adhook hack, it is not for sale and no warranty.
 But It is usefull for POC or understanding how to use Oracle Cloud Service.
@@ -22,11 +18,9 @@ OPC_PASS="password"
    CONF_FILE_DIR="$HOME/bin"
    ADJ_TIME=9000
 
- CONF_FILE_DIR
-
   CONF_FILE_DIR is where opc_compute.sh deployed.
 
- ADJ_TIME
+  ADJ_TIME
 
   There is difference between Oracle Cloud server's unix time and
   your terminal's unix time.

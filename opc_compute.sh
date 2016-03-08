@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-03-08 09:11:40 katsu> 
+## Time-stamp: <2016-03-08 16:04:24 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -141,6 +141,9 @@ machineimage() {
 	  | $JQ
     echo
 }    
+
+# Under construction
+# POST /machineimage/, POST /imagelist/, and POST /imagelistentry/ methods
 
 machineimage_create(){
 #    echo "What is the name of machineimage on storage cloud ?"
@@ -350,13 +353,13 @@ case $1 in
 	storage_volume_create
 	;;
     *)
-	echo "Usage: $0 { show | container | upload }"
-	echo "  show      -- show compute"
-	echo "  container -- show container"
-	echo "  upload    -- make image"
+	echo "Usage: $0 { show | shape | imagelist }"
+	echo "  show      -- show compute instance"
+	echo "  shape     -- show OCPU+Memory size template"
+	echo "  imagelist -- show OS and disk size template "
 	exit 1
 esac
 
 exit 0
 
-# POST /machineimage/, POST /imagelist/, and POST /imagelistentry/ methods
+
