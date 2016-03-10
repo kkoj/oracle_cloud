@@ -81,6 +81,29 @@ host01と同様に対向の情報を入力します。
 とりあえず、192.168.0.0/24ネットワークで全ての通信が疎通するようになります。
 ブロードキャスト、ネットマスクなどの細かい設定はipコマンドからできるので適宜利用してください。
 
-vxlanについてはこちらの資料があります。vxlan.koがデバイスドライバです。
+[ broadcast/multicast ping ]
+
+   [on host01]
+
+   [root@host01 opc]# route add -net 224.0.0.0/3 vxlan0
+   [root@host01 opc]# arp -s 224.0.0.1 5E:EE:F2:AB:43:F9
+   [root@host01 opc]# arp -s 192.168.0.255 5E:EE:F2:AB:43:F9
+   [root@host01 opc]# sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
+
+   [on host02]
+
+   [root@host02 opc]# route add -net 224.0.0.0/3 vxlan0
+   [root@host02 opc]# arp -s 224.0.0.1 3E:2B:74:81:9D:B1
+   [root@host02 opc]# sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
+   [root@host02 opc]# arp -s 192.168.0.255 3E:2B:74:81:9D:B1
+
+   これで次のコマンドがつかえるようになります。
+
+         ping -b 192.168.0.255
+         ping 224.0.0.1
+
+vxlanについてはこちらの資料があります。
+
 https://www.kernel.org/doc/Documentation/networking/vxlan.txt
 
+vxlan.koがデバイスドライバです。
