@@ -57,7 +57,7 @@ vxlan0 Link encap:Ethernet  HWaddr 3E:2B:74:81:9D:B1
 eth0      Link encap:Ethernet  HWaddr C6:B0:AE:55:E4:10
           inet addr:10.196.218.226  Bcast:10.196.218.227 Mask:255.255.255.252
 vxlan0    Link encap:Ethernet  HWaddr 5E:EE:F2:AB:43:F9
-          inet addr:192.168.0.2  Bcast:0.0.0.0  Mask:255.255.255.0
+          inet addr:192.168.0.2  Bcast:255.255.255.0  Mask:255.255.255.0
 
 ここで"vxlan0"のMACアドレスを書き留め、host01の設定で利用します。
 

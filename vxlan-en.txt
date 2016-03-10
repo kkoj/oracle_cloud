@@ -48,7 +48,7 @@ We could be find "vxlan0" with ifconfig as this output.
     eth0      Link encap:Ethernet  HWaddr C6:B0:E9:14:C2:AE
               inet addr:10.196.218.222  Bcast:10.196.218.223 Mask:255.255.255.252
     vxlan0 Link encap:Ethernet  HWaddr 3E:2B:74:81:9D:B1
-              inet addr:192.168.0.1  Bcast:0.0.0.0  Mask:255.255.255.0
+              inet addr:192.168.0.1  Bcast:255.255.255.0  Mask:255.255.255.0
 
 At this time, You write down the vxlan0's MAC address to use on host02 setting.
 
