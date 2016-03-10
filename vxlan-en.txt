@@ -1,0 +1,115 @@
+This memo for whom want to make their own network segment like AWS VPC.
+(You may know each Oracle Cloud instances has their own /30 bit netmask subnet.)
+
+So I try to make it and it works, I would like to share the method of how to make private
+overlay network with vxlan on Oracle Cloud.
+
+To be simplify, there is only two node to share same overlay network on OPC network,
+host01 and host02, as compute service host at this time.
+
+You must be sure the two host on same "Security Lists" at start this script.
+Using "default" or making new "Security Lists" like "internal-hosts".
+And make host01 and host02 belong to the Lists.
+
+Now there is some difficulty to make communication with multicast or GRE tunneling,
+because Oracle Cloud virtual routers are filtering that kind of packets.
+
+So I try to make another network segment on original network.
+No multicast packet will be accepted, I use unicast packet to the other node's network.
+
+[ vxlan over lay network on Oracle Cloud with two hosts method ]
+
+[Requirement of the hosts]
+
+The two hosts has this addresses from Oracle Cloud, IP and MAC.
+
+　host01 (eth0:C6:B0:E9:14:C2:AE)  10.196.218.222/255.255.255.252
+　host02 (eth0:C6:B0:AE:55:E4:10)  10.196.218.226/255.255.255.252 
+
+We will be make an virtual NIC named "vxlan0" and assign IP address as,
+
+   host01 (vxlan0) 192.168.0.1/255.255.255.0
+   host02 (vxlan0) 192.168.0.2/255.255.255.0
+
+So there is no communication on Oracle Cloud virtual L3 switches or routers, 
+we need under scripts.
+
+[operations on host01 ]
+
+  [root@host01 opc]# ip link add vxlan0 type vxlan id 100 dev eth0
+  [root@host01 opc]# ip addr add 192.168.0.1/24 brd + dev vxlan0
+  [root@host01 opc]# ip link set up dev vxlan0
+
+We could be find "vxlan0" with ifconfig as this output. 
+(wards of "vxlan0" is able to alternate as you like.)
+
+    [root@host01 opc]# ifconfig
+    eth0      Link encap:Ethernet  HWaddr C6:B0:E9:14:C2:AE
+              inet addr:10.196.218.222  Bcast:10.196.218.223 Mask:255.255.255.252
+    vxlan0 Link encap:Ethernet  HWaddr 3E:2B:74:81:9D:B1
+              inet addr:192.168.0.1  Bcast:0.0.0.0  Mask:255.255.255.0
+
+At this time, You write down the vxlan0's MAC address to use on host02 setting.
+
+[operations on host02]
+
+     [root@host02 opc]# ip link add vxlan0 type vxlan id 100 dev eth0
+     [root@host02 opc]# ip addr add 192.168.0.2/24 brd + dev vxlan0
+     [root@host02 opc]# ip link set up dev vxlan0
+
+    [root@host02 opc]# ifconfig
+    eth0      Link encap:Ethernet  HWaddr C6:B0:AE:55:E4:10
+               inet addr:10.196.218.226  Bcast:10.196.218.227 Mask:255.255.255.252
+    vxlan0    Link encap:Ethernet  HWaddr 5E:EE:F2:AB:43:F9
+            inet addr:192.168.0.2  Bcast:0.0.0.0  Mask:255.255.255.0
+
+At this time, You write down the vxlan0's MAC address to use on host01 setting.
+
+[operation on host01 part 2]
+
+Now we are going to set IP address on host's eth0 and Mac address of vxlan0.
+At this time, You write down the vxlan0's IP address and MAC address to use on host02.
+
+   [root@host01 opc]# bridge fdb append 5E:EE:F2:AB:43:F9 dev vxlan0 dst 10.196.218.226
+
+And set up arp tables of vxlan network.
+
+   [root@host01 opc]# arp -s 192.168.0.2 5E:EE:F2:AB:43:F9
+
+[operation on host02 part2]
+
+As of host01, we make the other side host's setting on.
+
+   [root@host02 opc]# bridge fdb append 3E:2B:74:81:9D:B1 dev vxlan0 dst 10.196.218.222
+   [root@host02 opc]# arp -s 192.168.0.1 3E:2B:74:81:9D:B1
+
+Now you can use 192.168.0.0/24 network .
+The broadcast address and netmask is to be set by ip command as you like.
+
+[ broadcast/multicast ping ]
+
+   [on host01]
+
+   [root@host01 opc]# route add -net 224.0.0.0/3 vxlan0
+   [root@host01 opc]# arp -s 224.0.0.1 5E:EE:F2:AB:43:F9
+   [root@host01 opc]# arp -s 192.168.0.255 5E:EE:F2:AB:43:F9
+   [root@host01 opc]# sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
+
+   [on host02]
+
+   [root@host02 opc]# route add -net 224.0.0.0/3 vxlan0
+   [root@host02 opc]# arp -s 224.0.0.1 3E:2B:74:81:9D:B1
+   [root@host02 opc]# sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
+   [root@host02 opc]# arp -s 192.168.0.255 3E:2B:74:81:9D:B1
+
+   It may works.
+
+         ping -b 192.168.0.255
+         ping 224.0.0.1
+
+There is vxlan document on Linux Kernel for your reference.
+
+https://www.kernel.org/doc/Documentation/networking/vxlan.txt
+
+And vxlan.ko is the kernel module.
+
