@@ -1,8 +1,9 @@
-This memo for whom want to make their own network segment like AWS VPC.
+Making vxlan network on Oracle Cloud
+
+This memo for making your own network segment on Oracle Cloud like AWS VPC.
 (You may know each Oracle Cloud instances has their own /30 bit netmask subnet.)
 
-So I try to make it and it works, I would like to share the method of how to make private
-overlay network with vxlan on Oracle Cloud.
+So I try to make it and it works, I would like to share the method of how to make private overlay network with vxlan on Oracle Cloud.
 
 To be simplify, there is only two node to share same overlay network on OPC network,
 host01 and host02, as compute service host at this time.
