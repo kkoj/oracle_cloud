@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-03-08 16:04:24 katsu> 
+## Time-stamp: <2016-03-11 14:28:56 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -10,8 +10,8 @@
 ## "base64"
 
 #CURL="curl --trace-ascii erlog "
-CURL="curl -s -x http://your.proxy:80"
-#CURL="curl -s "
+#CURL="curl -s -x http://your.proxy:8080"
+CURL="curl -s "
 JQ="jq . "
 
 ##
@@ -104,6 +104,7 @@ account() {
     echo
 }
 
+
 imagelist_info() {
 
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
@@ -128,9 +129,64 @@ instances() {
 	  $IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
 }
 
-ipassociation_info() {
+instance_delete() {
+    echo "What instance do you want to delete ?"
+    read ans
+    $CURL -X DELETE -H "Cookie: $COMPUTE_COOKIE" \
+	  $IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
+}
+
+ipassociation() {
+
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
-	  $IAAS_URL/ip/association/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+}
+
+_ipreservation() {
+    HOST_NAME=$1
+    $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	-d "{\"parentpool\":\"/oracle/public/ippool\", \
+             \"account\":\"/Compute-$OPC_DOMAIN/default\",\
+             \"permanent\": true, \
+    \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$HOST_NAME/ipreservation\"}"\
+	$IAAS_URL/ip/reservation/
+}
+
+ipreservation() {
+    $CURL -X GET -H "Content-Type: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+}
+
+ipreservation_delete() {
+    echo "What is the name of ipreservation to delete ?"
+    read ans
+    $CURL -X DELETE -H "Content-Type: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+  $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans/ipreservation
+}
+
+launchplan() {
+    echo "What is the name of new host ?"
+    read HOST_NAME
+    echo "What is the sshkey ? (you must upload sshkey first.)"
+    read SSHKEY
+    $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+        -d "{\"instances\": [ \
+          {\"shape\": \"oc3\",\
+           \"imagelist\": \"/oracle/public/oel_6.4_2GB_v1\",\
+ 	   \"sshkeys\": [\"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$SSHKEY\"],\
+           \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$HOST_NAME\",\
+           \"label\": \"$HOST_NAME\",\
+           \"networking\":{\"eth0\": \
+          {\"dns\": [\"$HOST_NAME\"], \
+       \"seclists\": [\"/Compute-$OPC_DOMAIN/default/default\"], \
+           \"nat\":\"ippool:/oracle/public/ippool\"\
+            } } } ] }" \
+	$IAAS_URL/launchplan/
+echo
 }
 
 # uploaded images
@@ -211,11 +267,11 @@ seclist_container() {
 	 -H "Cookie: $COMPUTE_COOKIE" \
 	 $IAAS_URL/seclist/Compute-$OPC_DOMAIN/default/ | $JQ
     echo
-#    echo user:
-#    $CURL -X GET -H "Accept: application/oracle-compute-v3+json" \
-#	 -H "Cookie: $COMPUTE_COOKIE" \
-#	 $IAAS_URL/seclist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
-#    echo
+    echo user:
+    $CURL -X GET -H "Accept: application/oracle-compute-v3+json" \
+	 -H "Cookie: $COMPUTE_COOKIE" \
+	 $IAAS_URL/seclist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+    echo
 }
 
 seclist_delete(){
@@ -240,6 +296,12 @@ sshkey(){
     echo
 }
 
+sshkey_info(){
+    $CURL -X GET -H "Content-Type: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/sshkey/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+}
+
 storage_attachment_info() {
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	-H "Content-Type: application/oracle-compute-v3+json" \
@@ -258,7 +320,7 @@ storage_volume_create() {
 storage_volume_info() {
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	-H "Content-Type: application/oracle-compute-v3+json" \
-	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$1 | $JQ
 }
 
 storage_attatchment() {
@@ -288,13 +350,29 @@ case $1 in
 	get_cookie
 	imagelist_user_defined_info
 	;;
-    ipassociation-info)
+    ipassociation)
 	get_cookie
-	ipassociation_info
+	ipassociation
+	;;
+    ipreservation)
+	get_cookie
+	ipreservation
+	;;
+    ipreservation-delete)
+	get_cookie
+	ipreservation_delete
 	;;
     instances)
 	get_cookie
 	instances
+	;;
+    instance-delete)
+	get_cookie
+	instance_delete
+	;;
+    launchplan)
+	get_cookie
+	launchplan
 	;;
     machineimage-create)
 	get_cookie
@@ -320,19 +398,23 @@ case $1 in
 	get_cookie
 	sshkey
 	;;
+    sshkey-info)
+	get_cookie
+	sshkey_info
+	;;
     show)
 	get_cookie
 	instances
 	;;
-    seclist_create)
+    seclist-create)
 	get_cookie
 	seclist_create
 	;;
-    seclist_container)
+    seclist-container)
 	get_cookie
 	seclist_container
 	;;
-    seclist_name)
+    seclist-name)
 	get_cookie
 	seclist_name
 	;;
@@ -352,14 +434,24 @@ case $1 in
 	get_cookie
 	storage_volume_create
 	;;
+    create-minimal)
+	# Under constluction
+	get_cookie
+	sshkey
+	storage_volume_create
+	seclist_add
+	ipreservation
+	;;
+    _ipreservation)
+	get_cookie
+	_ipreservation
+	;;
     *)
 	echo "Usage: $0 { show | shape | imagelist }"
 	echo "  show      -- show compute instance"
-	echo "  shape     -- show OCPU+Memory size template"
+	echo "  shape     -- show OCPU + Memory size template"
 	echo "  imagelist -- show OS and disk size template "
 	exit 1
 esac
 
 exit 0
-
-
