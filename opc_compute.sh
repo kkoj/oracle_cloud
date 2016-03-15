@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-03-12 04:31:16 katsu> 
+## Time-stamp: <2016-03-15 17:58:54 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -10,9 +10,10 @@
 ## "base64"
 
 #CURL="curl --trace-ascii erlog "
-#CURL="curl -s -x http://your.proxy:8080"
+#CURL="curl -s -x http://your.proxy:80"
 CURL="curl -s "
-JQ="jq . "
+#JQ="jq . "
+JQ="python -m json.tool "
 
 ##
 ## Please set parameter
@@ -124,9 +125,17 @@ TEST_IMAGE=oel_6.4_2GB_v1
 #	$IAAS_URL/imagelist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/create-gui3-centos/entry/1 | $JQ
 }
 
+instance() {
+    echo "What instance do you want to show ?"
+    read ans
+    $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
+	  $IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
+}
+
 instances() {
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
-	  $IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+	  $IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ
+#	  $IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
 }
 
 instance_delete() {
@@ -361,6 +370,10 @@ case $1 in
     ipreservation-delete)
 	get_cookie
 	ipreservation_delete
+	;;
+    instance)
+	get_cookie
+	instance
 	;;
     instances)
 	get_cookie

@@ -1,8 +1,9 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-03-02 09:20:07 katsu> 
+# Time-stamp: <2016-03-15 12:41:27 katsu> 
 #
-# "curl" and "jq" are needed for this script
+## Some program were needed for this script
+## "curl"
 
 ##
 ## set paramaters
