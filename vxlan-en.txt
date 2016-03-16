@@ -137,8 +137,8 @@ then
     on host01,
 
     [root@host01 opc]# arp -s 192.168.10.2 EE:2E:1B:1A:1C:44
-    [root@host02 opc]# bridge fdb append EE:2E:1B:1A:1C:44 dev vxlan1 dst
-    10.196.218.222
+    [root@host01 opc]# bridge fdb append EE:2E:1B:1A:1C:44 dev vxlan1 dst
+    10.196.218.226
 
 and on host02,
 
