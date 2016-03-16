@@ -1,4 +1,6 @@
-Oracle Cloud に vxlan ネットワークをつくる
+--------------------------------------------
+ Oracle Cloud に vxlan ネットワークをつくる
+--------------------------------------------
 
 このメモはオラクルクラウドでプライベートIPアドレスを自由に割り振りたい方を対象としています。AWSでいうところのVPCちっくなものです。
 (いまのところオラクルクラウドのインスタンスはそれぞれ30ビットマスクのサブネットにつくられます。)
@@ -20,44 +22,44 @@ host01とhost02はあらかじめ同じ"Security Lists"に所属するように�
 
 ふたつのホストのMACアドレス、IPアドレスはこうなっています。
 
-　host01 (eth0:C6:B0:E9:14:C2:AE)  10.196.218.222/255.255.255.252
-　host02 (eth0:C6:B0:AE:55:E4:10)  10.196.218.226/255.255.255.252 
+    host01 (eth0:C6:B0:E9:14:C2:AE)  10.196.218.222/255.255.255.252
+    host02 (eth0:C6:B0:AE:55:E4:10)  10.196.218.226/255.255.255.252 
 
 これに仮想NIC、"vxlan0"を追加し、IPアドレスを振り当てようとします。
 
-  host01 (vxlan0) 192.168.0.1/255.255.255.0
-  host02 (vxlan0) 192.168.0.2/255.255.255.0
+    host01 (vxlan0) 192.168.0.1/255.255.255.0
+    host02 (vxlan0) 192.168.0.2/255.255.255.0
 
 そのままだとユーザが設定できないオラクル管理のルーターでネットワークが分断されているため疎通しません。
 以下の設定を行います。
 
 【host01での作業1】
 
-[root@host01 opc]# ip link add vxlan0 type vxlan id 100 dev eth0
-[root@host01 opc]# ip addr add 192.168.0.1/24 dev vxlan0
-[root@host01 opc]# ip link set up dev vxlan0
+    [root@host01 opc]# ip link add vxlan0 type vxlan id 100 dev eth0
+    [root@host01 opc]# ip addr add 192.168.0.1/24 brd + dev vxlan0
+    [root@host01 opc]# ip link set up dev vxlan0
 
 ここで"vxlan0"というデバイスが動作しているはずです。文字列"vxlan0"は任意指定できます。
 
-[root@host01 opc]# ifconfig　(出力の一部)
-eth0      Link encap:Ethernet  HWaddr C6:B0:E9:14:C2:AE
-          inet addr:10.196.218.222  Bcast:10.196.218.223 Mask:255.255.255.252
-vxlan0 Link encap:Ethernet  HWaddr 3E:2B:74:81:9D:B1
-          inet addr:192.168.0.1  Bcast:0.0.0.0  Mask:255.255.255.0
+    [root@host01 opc]# ifconfig(出力の一部)
+    eth0   Link encap:Ethernet  HWaddr C6:B0:E9:14:C2:AE
+           inet addr:10.196.218.222  Bcast:10.196.218.223 Mask:255.255.255.252
+    vxlan0 Link encap:Ethernet  HWaddr 3E:2B:74:81:9D:B1
+           inet addr:192.168.0.1  Bcast:255.255.255.0  Mask:255.255.255.0
 
 ここで"vxlan0"のMACアドレスを書き留め、host02の設定で利用します。
 
 【host02での作業1】
 
-[root@host02 opc]# ip link add vxlan0 type vxlan id 100 dev eth0
-[root@host02 opc]# ip addr add 192.168.0.2/24 dev vxlan0
-[root@host02 opc]# ip link set up dev vxlan0
+    [root@host02 opc]# ip link add vxlan0 type vxlan id 100 dev eth0
+    [root@host02 opc]# ip addr add 192.168.0.2/24 brd + dev vxlan0
+    [root@host02 opc]# ip link set up dev vxlan0
 
-[root@host02 opc]# ifconfig
-eth0      Link encap:Ethernet  HWaddr C6:B0:AE:55:E4:10
-          inet addr:10.196.218.226  Bcast:10.196.218.227 Mask:255.255.255.252
-vxlan0    Link encap:Ethernet  HWaddr 5E:EE:F2:AB:43:F9
-          inet addr:192.168.0.2  Bcast:255.255.255.0  Mask:255.255.255.0
+    [root@host02 opc]# ifconfig
+    eth0   Link encap:Ethernet  HWaddr C6:B0:AE:55:E4:10
+           inet addr:10.196.218.226  Bcast:10.196.218.227 Mask:255.255.255.252
+    vxlan0 Link encap:Ethernet  HWaddr 5E:EE:F2:AB:43:F9
+           inet addr:192.168.0.2  Bcast:0.0.0.0  Mask:255.255.255.0
 
 ここで"vxlan0"のMACアドレスを書き留め、host01の設定で利用します。
 
@@ -65,45 +67,82 @@ vxlan0    Link encap:Ethernet  HWaddr 5E:EE:F2:AB:43:F9
 
 ブリッジの設定で対向のhost02の実IPアドレス、vxlan0のMACアドレスを設定します。
 
-[root@host01 opc]# bridge fdb append 5E:EE:F2:AB:43:F9 dev vxlan0 dst 10.196.218.226
+    [root@host01 opc]# bridge fdb append 5E:EE:F2:AB:43:F9 dev vxlan0 dst
+    10.196.218.226
 
 裏ネットワークセグメントのarpテーブルを書き込みます。
 
-[root@host01 opc]# arp -s 192.168.0.2 5E:EE:F2:AB:43:F9
+    [root@host01 opc]# arp -s 192.168.0.2 5E:EE:F2:AB:43:F9
 
 【host02での作業2】
 
 host01と同様に対向の情報を入力します。
 
-[root@host02 opc]# bridge fdb append 3E:2B:74:81:9D:B1 dev vxlan0 dst 10.196.218.222
-[root@host02 opc]# arp -s 192.168.0.1 3E:2B:74:81:9D:B1
+    [root@host02 opc]# bridge fdb append 3E:2B:74:81:9D:B1 dev vxlan0 dst
+    10.196.218.222
+    [root@host02 opc]# arp -s 192.168.0.1 3E:2B:74:81:9D:B1
 
 とりあえず、192.168.0.0/24ネットワークで全ての通信が疎通するようになります。
 ブロードキャスト、ネットマスクなどの細かい設定はipコマンドからできるので適宜利用してください。
 
-[ broadcast/multicast ping ]
+【broadcast/multicast ping】 
 
-   [on host01]
+    [host01での作業]
 
-   [root@host01 opc]# route add -net 224.0.0.0/3 vxlan0
-   [root@host01 opc]# arp -s 224.0.0.1 5E:EE:F2:AB:43:F9
-   [root@host01 opc]# arp -s 192.168.0.255 5E:EE:F2:AB:43:F9
-   [root@host01 opc]# sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
+    [root@host01 opc]# route add -net 224.0.0.0/3 vxlan0
+    [root@host01 opc]# arp -s 224.0.0.1 5E:EE:F2:AB:43:F9
+    [root@host01 opc]# arp -s 192.168.0.255 5E:EE:F2:AB:43:F9
+    [root@host01 opc]# sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
 
-   [on host02]
+    [host02での作業]
 
-   [root@host02 opc]# route add -net 224.0.0.0/3 vxlan0
-   [root@host02 opc]# arp -s 224.0.0.1 3E:2B:74:81:9D:B1
-   [root@host02 opc]# sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
-   [root@host02 opc]# arp -s 192.168.0.255 3E:2B:74:81:9D:B1
+    [root@host02 opc]# route add -net 224.0.0.0/3 vxlan0
+    [root@host02 opc]# arp -s 224.0.0.1 3E:2B:74:81:9D:B1
+    [root@host02 opc]# sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
+    [root@host02 opc]# arp -s 192.168.0.255 3E:2B:74:81:9D:B1
 
    これで次のコマンドがつかえるようになります。
 
          ping -b 192.168.0.255
          ping 224.0.0.1
 
+Linuxカーネルのipv4/icmp.c icmp_discard()はすべてのマルチキャスト icmp を
+黙って破棄します。(英雄Alan Coxのコードです。。)
+"net.ipv4.icmp_echo_ignore_broadcasts=0"はブロードキャストのみではなく
+マルチキャストのパケットにも効果があります。
+
+【二枚目以上の vxlan NIC】
+
+vlan NIC は vxlan0, vxlan1, vxlan2 のように数つくることができます。
+作成方法は上記の一枚目のつくりかたと同様です。が、group ID は新規にユニーク
+なものとしてください。
+そして対向のホストの NIC について arp 情報を作例します。
+
+もしこのような環境でしたら
+
+    host01 (vxlan1) FA:2E:7E:95:55:E6
+    host02 (vxlan1) EE:2E:1B:1A:1C:44
+
+host01 では,
+
+    [root@host01 opc]# arp -s 192.168.10.2 EE:2E:1B:1A:1C:44
+    [root@host02 opc]# bridge fdb append EE:2E:1B:1A:1C:44 dev vxlan1 dst
+    10.196.218.222
+
+とし、host02 では
+
+    [root@host02 opc]# arp -s 192.168.10.1 FA:2E:7E:95:55:E6
+    [root@host02 opc]# bridge fdb append FA:2E:7E:95:55:E6 dev vxlan1 dst
+    10.196.218.222
+
+とします。
+
+【参考資料】
+			
 vxlanについてはこちらの資料があります。
 
 https://www.kernel.org/doc/Documentation/networking/vxlan.txt
 
 vxlan.koがデバイスドライバです。
+
+https://github.com/kkoj/oracle_cloud/
