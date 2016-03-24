@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-03-15 12:41:27 katsu> 
+# Time-stamp: <2016-03-25 01:20:22 katsu> 
 #
 ## Some program were needed for this script
 ## "curl"
@@ -56,15 +56,29 @@ get_auth() {
     rm $AUTH_HEADER
 }
 
-containers_info() {
-    $CURL -X GET -H "$AUTH_TOKEN" "$STORAGE_URL"
-    echo
-}    
-
-container_info() {
-    echo -n "Which container do you want to know ? "
+archive_container_create() {
+    echo -n "What is the name of new container ?  "
     read ans
-    $CURL -X GET -H "$AUTH_TOKEN" $STORAGE_URL/$ans
+    $CURL -X PUT -H "$AUTH_TOKEN" \
+	-H "X-Storage-Class: Archive" \
+	$STORAGE_URL/$ans
+    echo
+}
+
+archive_container_delete() {
+    container_delete
+}
+
+archive_upload_file(){
+    echo -n "Which container do you want to use ? "
+    read ans
+    echo -n "Which file do you want to upload ? "
+    read ans2
+    FILE_NAME=`basename $ans2`
+    $CURL -X PUT -H "$AUTH_TOKEN" \
+	-H "X-Storage-Class: Archive" \
+	-T $ans2 $STORAGE_URL/$ans/$FILE_NAME
+    echo
 }
 
 container_create() {
@@ -73,6 +87,24 @@ container_create() {
     $CURL -X PUT -H "$AUTH_TOKEN" $STORAGE_URL/$ans
     echo
 }
+
+container_delete() {
+    echo -n "Which container do you delete ?  "
+    read ans
+    $CURL -X DELETE -H "$AUTH_TOKEN" $STORAGE_URL/$ans
+    echo
+}
+
+container_info() {
+    echo -n "Which container do you want to know ? "
+    read ans
+    $CURL -X GET -H "$AUTH_TOKEN" $STORAGE_URL/$ans
+}
+
+containers_info() {
+    $CURL -X GET -H "$AUTH_TOKEN" "$STORAGE_URL"
+    echo
+}    
 
 upload_file(){
     echo -n "Which container do you want to use ? "
@@ -92,31 +124,35 @@ _upload_file(){
 }
 
 metadata_info(){
-    echo "Which file do you want to know ?"
+    echo -n "Which container do you want to know ? "
     read ans
-    #    $CURL -I -X HEAD -H "$AUTH_TOKEN" $STORAGE_URL/compute_images/$ans | \
-    $CURL -I -X HEAD -H "$AUTH_TOKEN" $STORAGE_URL/compute_images/
-#	grep Content-Length: | awk '{print $2}'
+    echo -n "Which file do you want to know ? "
+    read ans2
+    FILE_NAME=`basename $ans2`
+    $CURL -I -X HEAD -H "$AUTH_TOKEN" $STORAGE_URL/$ans/$FILE_NAME
     echo
 }
+
+# "compute_images" is reserved word for boot images.
 
 _metadata_info(){
     $CURL -I -X HEAD -H "$AUTH_TOKEN" $STORAGE_URL/compute_images/$1 | \
 	grep Content-Length: | awk '{print $2}'
 }
     
-delete_container() {
-    echo -n "Which container do you delete ?  "
-    read ans
-    $CURL -X DELETE -H "$AUTH_TOKEN" $STORAGE_URL/$ans
-    echo
-}
-
 case "$1" in
     auth)
 	get_auth
 	echo $AUTH_TOKEN
 	echo $STORAGE_URL
+	;;
+    archive-create)
+	get_auth
+	archive_container_create
+	;;
+    archive-upload)
+	get_auth
+	archive_upload_file
 	;;
     show)
 	get_auth
@@ -140,7 +176,7 @@ case "$1" in
 	;;
     metadata)
 	get_auth
-	metadata_info
+	metadata_info $2 $3
 	;;
     _metadata)
 	get_auth
@@ -148,8 +184,8 @@ case "$1" in
 	;;
     delete)
 	get_auth
-	show_containers
-	delete_container
+	containers_info
+	container_delete
 	;;
     *)
 	echo "Usage: $0 { show | create | upload | delete }"
