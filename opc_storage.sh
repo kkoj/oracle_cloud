@@ -1,9 +1,10 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-03-25 01:20:22 katsu> 
+# Time-stamp: <2016-03-28 18:56:08 katsu> 
 #
-## Some program were needed for this script
-## "curl"
+# Some program were needed for this script
+#
+# "curl"
 
 ##
 ## set paramaters
@@ -38,7 +39,9 @@ fi
 
 OPC_URL=https://"$OPC_DOMAIN"."storage.oraclecloud.com"
 STORAGE_URL="$OPC_URL"/v1/Storage-"$OPC_DOMAIN"
+ARCHIVE_URL="$OPC_URL"/v0/Storage-"$OPC_DOMAIN"
 AUTH_HEADER="temp-storage.$$"
+RESTORE_FILE="temp-restore.$$"
 
 ##
 ## functions
@@ -69,7 +72,11 @@ archive_container_delete() {
     container_delete
 }
 
-archive_upload_file(){
+archive_download() {
+    download
+}
+
+archive_upload(){
     echo -n "Which container do you want to use ? "
     read ans
     echo -n "Which file do you want to upload ? "
@@ -81,6 +88,25 @@ archive_upload_file(){
     echo
 }
 
+archive_restore() {
+    echo "What containerName/objectName do you want to restore ?"
+    read ans
+    RET=$($CURL -X POST -H "$AUTH_TOKEN" \
+	"$ARCHIVE_URL/$ans?restore" -w '%{http_code}')
+
+    # get the status code
+    STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
+
+    if [ $STATUS = 200 ]; then
+	echo "Object has been restored or is being retrieved"
+    elif [ $STATUS = 404 ]; then
+	echo "The specified resource doesn't exist"
+    else
+	# It is not a status code.
+	echo $RET
+    fi
+}
+
 container_create() {
     echo -n "What is the name of new container ?  "
     read ans
@@ -88,23 +114,50 @@ container_create() {
     echo
 }
 
-container_delete() {
-    echo -n "Which container do you delete ?  "
+# "compute_images" is a reserved word for boot images container.
+
+container_compute_images() {
+    echo /compute_images
+    $CURL -X GET -H "$AUTH_TOKEN" "$STORAGE_URL/compute_images"
+}    
+
+containers_info() {
+    $CURL -X GET -H "$AUTH_TOKEN" "$STORAGE_URL"
+}    
+
+containers_list() {
+    CONTAINER=($($CURL -X GET -H "$AUTH_TOKEN" "$STORAGE_URL"))
+    for ((i = 0 ; i < ${#CONTAINER[@]};++i )) do
+    OBJECT=($($CURL -X GET -H "$AUTH_TOKEN" $STORAGE_URL/${CONTAINER[$i]}))
+    echo /${CONTAINER[$i]}
+    for ((j = 0 ; j < ${#OBJECT[@]};++j )) do
+    echo /${CONTAINER[$i]}/${OBJECT[$j]}
+    done
+    done
+}
+
+delete() {
+    echo -n "Which container or container/object do you want to delete ?  "
     read ans
     $CURL -X DELETE -H "$AUTH_TOKEN" $STORAGE_URL/$ans
     echo
 }
 
-container_info() {
-    echo -n "Which container do you want to know ? "
+download() {
+    echo "Which file do you want to downlaod ? "
+    echo "\"containerName/objectName\""
     read ans
-    $CURL -X GET -H "$AUTH_TOKEN" $STORAGE_URL/$ans
-}
+    FILE_NAME=`basename $ans`
+    STATUS=$($CURL -X GET -H "$AUTH_TOKEN" \
+	 -w '%{http_code}' -o $FILE_NAME $STORAGE_URL/$ans )
 
-containers_info() {
-    $CURL -X GET -H "$AUTH_TOKEN" "$STORAGE_URL"
-    echo
-}    
+    if [ $STATUS = 200 ]; then
+	echo "Download is done."
+    else
+	head $FILE_NAME
+	echo
+    fi
+}
 
 upload_file(){
     echo -n "Which container do you want to use ? "
@@ -133,13 +186,13 @@ metadata_info(){
     echo
 }
 
-# "compute_images" is reserved word for boot images.
+# "compute_images" is a reserved word for boot images.
 
 _metadata_info(){
     $CURL -I -X HEAD -H "$AUTH_TOKEN" $STORAGE_URL/compute_images/$1 | \
 	grep Content-Length: | awk '{print $2}'
 }
-    
+
 case "$1" in
     auth)
 	get_auth
@@ -150,29 +203,34 @@ case "$1" in
 	get_auth
 	archive_container_create
 	;;
+    archive-download)
+	get_auth
+	archive_download
+	;;
     archive-upload)
 	get_auth
-	archive_upload_file
-	;;
-    show)
-	get_auth
-	containers_info
-	;;
-    container)
-	get_auth
-	container_info
+	archive_upload
 	;;
     create)
 	get_auth
 	container_create
 	;;
-    upload)
+    delete)
 	get_auth
-	upload_file
+	containers_info
+	delete
 	;;
-    _upload)
+    download)
 	get_auth
-	_upload_file $2 $3
+	download
+	;;
+    images)
+	get_auth
+	container_compute_images
+	;;
+    list)
+	get_auth
+	containers_list
 	;;
     metadata)
 	get_auth
@@ -182,17 +240,30 @@ case "$1" in
 	get_auth
 	_metadata_info $2
 	;;
-    delete)
+    restore)
+	get_auth
+	archive_restore
+	;;
+    show)
 	get_auth
 	containers_info
-	container_delete
+	;;
+    upload)
+	get_auth
+	upload_file
+	;;
+    _upload)
+	get_auth
+	_upload_file $2 $3
 	;;
     *)
 	echo "Usage: $0 { show | create | upload | delete }"
-	echo "  show     -- show containers"
+	echo "  show     -- list container/object"
 	echo "  create   -- make new container"
-	echo "  upload   -- upload image"
-	echo "  delete   -- delete container"
+	echo "  upload   -- upload local file"
+	echo "  delete   -- delete container or container/object"
+	echo
+	echo "When you want to down load archived files, restore it first."
 	exit 1
 esac
 
