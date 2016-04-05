@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-03-30 01:39:10 katsu> 
+## Time-stamp: <2016-04-05 14:08:51 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -57,9 +57,9 @@ get_cookie() {
     if [ -f $COOKIE_FILE ]; then
 	epoc=$(date '+%s')
 	EPOC=$( sed 's/^nimbula=//' $COOKIE_FILE | base64 --decode \
-	      | LANG=C sed 's/\(.*\)expires\(.*\)expires\(.*\)/\2/' \
-	      | sed -e 's/\(.*\) \([0-9]\{10,\}.[0-9]\{3,\}\)\(.*\)/\2/' \
-	      | sed -e 's/\(.*\)\.\(.*\)/\1/')
+	    | LANG=C sed 's/\(.*\)expires\(.*\)expires\(.*\)/\2/' \
+	    | sed -e 's/\(.*\) \([0-9]\{10,\}.[0-9]\{3,\}\)\(.*\)/\2/' \
+	    | sed -e 's/\(.*\)\.\(.*\)/\1/')
 
 #	echo "$EPOC"
 #	echo "$epoc"
@@ -106,7 +106,6 @@ account() {
     echo
 }
 
-
 imagelist_info() {
 
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
@@ -120,47 +119,33 @@ imagelist_user_defined_info() {
 }
 
 imagelistentry_info() {
-TEST_IMAGE=oel_6.4_2GB_v1
+    TEST_IMAGE=oel_6.4_2GB_v1
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/imagelist/oracle/public/$TEST_IMAGE/entry/1 | $JQ
-#	$IAAS_URL/imagelist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/create-gui3-centos/entry/1 | $JQ
 }
 
 instance() {
-    echo "What instance do you want to show ?"
+    echo "What instance/uuid do you want to show ?"
     read ans
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
-	  $IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
+	  $IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans | $JQ
 }
 
 instances() {
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
-	  $IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ
-#	  $IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+	$IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ
 }
 
 instance_delete() {
-    echo "What instance do you want to delete ?"
+    echo "What instance/uuid do you want to delete ?"
     read ans
     $CURL -X DELETE -H "Cookie: $COMPUTE_COOKIE" \
-	  $IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
+	$IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
 }
 
 ipassociation() {
-
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
-}
-
-_ipreservation() {
-    HOST_NAME=$1
-    $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
-	-H "Cookie: $COMPUTE_COOKIE" \
-	-d "{\"parentpool\":\"/oracle/public/ippool\", \
-             \"account\":\"/Compute-$OPC_DOMAIN/default\",\
-             \"permanent\": true, \
-    \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$HOST_NAME/ipreservation\"}"\
-	$IAAS_URL/ip/reservation/
 }
 
 ipreservation() {
@@ -169,34 +154,60 @@ ipreservation() {
 	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
 }
 
+ipreservation_create() {
+    HOST_NAME=$1
+    $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	-d "{\"parentpool\":\"/oracle/public/ippool\", \
+             \"account\":\"/Compute-$OPC_DOMAIN/default\",\
+             \"permanent\": true, \
+             \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$HOST_NAME\"}"\
+	$IAAS_URL/ip/reservation/
+}
+
 ipreservation_delete() {
     echo "What is the name of ipreservation to delete ?"
     read ans
     $CURL -X DELETE -H "Content-Type: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
-  $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans/ipreservation
+	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
 }
 
 launchplan() {
+
     echo "What is the name of new host ?"
     read HOST_NAME
+
     echo "What is the sshkey ? (you must upload sshkey first.)"
     read SSHKEY
-    $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
+
+#    ipreservation_create $HOST_NAME
+
+#    CURL="curl -v "
+    RET=$($CURL -X POST \
+	-H "Content-Type: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
+	-w '%{http_code}' \
         -d "{\"instances\": [ \
-          {\"shape\": \"oc3\",\
-           \"imagelist\": \"/oracle/public/oel_6.4_2GB_v1\",\
- 	   \"sshkeys\": [\"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$SSHKEY\"],\
-           \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$HOST_NAME\",\
-           \"label\": \"$HOST_NAME\",\
-           \"networking\":{\"eth0\": \
-          {\"dns\": [\"$HOST_NAME\"], \
-       \"seclists\": [\"/Compute-$OPC_DOMAIN/default/default\"], \
-           \"nat\":\"ippool:/oracle/public/ippool\"\
-            } } } ] }" \
-	$IAAS_URL/launchplan/
-echo
+            {\"shape\": \"oc3\",\
+             \"imagelist\": \"/oracle/public/oel_6.4_2GB_v1\",\
+             \"sshkeys\": [\"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$SSHKEY\"],\
+             \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$HOST_NAME\",\
+             \"label\": \"$HOST_NAME\",\
+             \"networking\":{\"eth0\": \
+              {\"dns\": [\"$HOST_NAME\"], \
+               \"seclists\": [\"/Compute-$OPC_DOMAIN/default/default\"], \
+               \"nat\":\"ippool:/oracle/public/ippool\"} \
+            } } ] }" \
+	$IAAS_URL/launchplan/)
+
+    STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
+
+    if [ $STATUS = 201 ]; then
+	echo "$HOST_NAME created"
+    else
+	echo $RET
+    fi
 }
 
 # uploaded images
@@ -249,29 +260,19 @@ shape() {
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" $IAAS_URL/shape/ | $JQ
 }    
 
-seclist_create(){
-    echo -n "What is the name of container do you create ? "
-    read ans
-    echo -n "Which is JSON file ? "
-    read json
-    $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
-	-H "Cookie: $COMPUTE_COOKIE" \
-	-d "$json" \
-	$IAAS_URL/seclist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
-    echo
-}
+secassociation() {
+# endpoint: secassociation/vcable_uuid/secassociation_uuid
+    $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/secassociation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+}    
 
-seclist_name() {
-    echo -n "What is the name of seclist do you retrive ? "
-    read name
-    $CURL -X GET -H "Content-Type: application/oracle-compute-v3+json" \
-	-H "Cookie: $COMPUTE_COOKIE" \
-	$IAAS_URL/seclist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans \
-	| $JQ
-    echo
-}
+secassociation_create() {
+# endpoint: secassociation/vcable_uuid/secassociation_uuid
+    $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/secassociation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+}    
 
-seclist_container() {
+seclist() {
     echo default:
     $CURL -X GET -H "Accept: application/oracle-compute-v3+json" \
 	 -H "Cookie: $COMPUTE_COOKIE" \
@@ -284,12 +285,66 @@ seclist_container() {
     echo
 }
 
+seclist_create(){
+    echo -n "What is the name of container do you create ? "
+    read ans
+    echo -n "Which is JSON file ? "
+    read json
+    $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	-d "$json" \
+	$IAAS_URL/seclist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
+    echo
+}
+
 seclist_delete(){
     echo "What is the name of seclist you want to delete ?"
     read ans
     $CURL -X DELETE -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/seclist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
+}
+
+secrule() {
+    $CURL -X GET -H "Accept: application/oracle-compute-v3+json" \
+	 -H "Cookie: $COMPUTE_COOKIE" \
+	 $IAAS_URL/secrule/Compute-$OPC_DOMAIN/ | $JQ
+    echo
+}
+
+secrule_create() {
+    RET=$($CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	-w '%{http_code}' \
+	-d "{\"dst_list\": \"seclist:/Compute-$OPC_DOMAIN/default/default\",
+             \"name\": \"/Compute-$OPC_DOMAIN/PublicSSHAccess\",
+             \"application\": \"/oracle/public/ssh\",
+             \"src_list\" \"seciplist:/oracle/public/public-internet\",
+             \"action\": \"PERMIT\" }" \
+	 $IAAS_URL/secrule/ )
+    STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
+
+    if [ $STATUS = 200 ]; then
+	echo "secrule created"
+    else
+	echo $RET
+    fi
+}
+
+secrule_make_default_ssh() {
+    RET=$($CURL -X GET -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	-w '%{http_code}' \
+	$IAAS_URL/secrule/Compute-$OPC_DOMAIN/DefaultPublicSSHAccess )
+    STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
+
+    if [ $STATUS = 200 ]; then
+	echo "DefaultPublicSSHAccess"
+	secrule_create
+    else
+	echo "Try to make DefaultPublicSSHAccess rule"
+	secrule_create
+    fi
 }
 
 sshkey(){
@@ -404,9 +459,33 @@ case $1 in
 	get_cookie
 	role
 	;;
+    secassociation)
+	get_cookie
+	secassociation
+	;;
+    seclist)
+	get_cookie
+	seclist
+	;;
+    seclist-create)
+	get_cookie
+	seclist_create
+	;;
+    seclist_delete)
+	get_cookie
+	seclist_delete
+	;;
+    secrule)
+	get_cookie
+	secrule
+	;;
     shape)
 	get_cookie
 	shape
+	;;
+    show)
+	get_cookie
+	instances
 	;;
     sshkey)
 	get_cookie
@@ -415,26 +494,6 @@ case $1 in
     sshkey-info)
 	get_cookie
 	sshkey_info
-	;;
-    show)
-	get_cookie
-	instances
-	;;
-    seclist-create)
-	get_cookie
-	seclist_create
-	;;
-    seclist-container)
-	get_cookie
-	seclist_container
-	;;
-    seclist-name)
-	get_cookie
-	seclist_name
-	;;
-    seclist_delete)
-	get_cookie
-	seclist_delete
 	;;
     storage-attachment)
 	get_cookie
@@ -458,13 +517,18 @@ case $1 in
 	;;
     _ipreservation)
 	get_cookie
-	_ipreservation
+	ipreservation_create
+	;;
+    secrule_make_default_ssh)
+	get_cookie
+	secrule_make_default_ssh
 	;;
     *)
-	echo "Usage: $0 { show | shape | imagelist }"
-	echo "  show      -- show compute instance"
-	echo "  shape     -- show OCPU + Memory size template"
-	echo "  imagelist -- show OS and disk size template "
+	echo "Usage: $0 { show | shape | imagelist | launchplan }"
+	echo "  show       -- show compute instance"
+	echo "  shape      -- show OCPU + Memory size template"
+	echo "  imagelist  -- show OS and disk size template "
+	echo "  launchplan -- make an instance for temporary "
 	exit 1
 esac
 
