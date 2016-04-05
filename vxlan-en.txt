@@ -1,4 +1,6 @@
-Making vxlan network on Oracle Cloud
+--------------------------------------
+ Making vxlan network on Oracle Cloud
+--------------------------------------
 
 This memo is for making your own network segment on Oracle Cloud like AWS VPC.
 As you know, each Oracle Cloud instances has their own /30 bit netmask subnet ;)
@@ -27,22 +29,22 @@ network.
 
 The two hosts has this addresses from Oracle Cloud, IP and MAC.
 
-　host01 (eth0:C6:B0:E9:14:C2:AE)  10.196.218.222/255.255.255.252
-　host02 (eth0:C6:B0:AE:55:E4:10)  10.196.218.226/255.255.255.252 
+    host01 (eth0:C6:B0:E9:14:C2:AE)  10.196.218.222/255.255.255.252
+    host02 (eth0:C6:B0:AE:55:E4:10)  10.196.218.226/255.255.255.252 
 
 We will be make an virtual NIC named "vxlan0" and assign IP address as,
 
-   host01 (vxlan0) 192.168.0.1/255.255.255.0
-   host02 (vxlan0) 192.168.0.2/255.255.255.0
+    host01 (vxlan0) 192.168.0.1/255.255.255.0
+    host02 (vxlan0) 192.168.0.2/255.255.255.0
 
 So there is no communication on Oracle Cloud virtual L3 switches or routers, 
 we need under scripts.
 
 [operations on host01 ]
 
-  [root@host01 opc]# ip link add vxlan0 type vxlan id 100 dev eth0
-  [root@host01 opc]# ip addr add 192.168.0.1/24 brd + dev vxlan0
-  [root@host01 opc]# ip link set up dev vxlan0
+    [root@host01 opc]# ip link add vxlan0 type vxlan id 100 dev eth0
+    [root@host01 opc]# ip addr add 192.168.0.1/24 brd + dev vxlan0
+    [root@host01 opc]# ip link set up dev vxlan0
 
 We could be find "vxlan0" with ifconfig as this output. 
 (wards of "vxlan0" is able to alternate as you like.)
@@ -57,9 +59,9 @@ At this time, You write down the vxlan0's MAC address to use on host02 setting.
 
 [operations on host02]
 
-     [root@host02 opc]# ip link add vxlan0 type vxlan id 100 dev eth0
-     [root@host02 opc]# ip addr add 192.168.0.2/24 brd + dev vxlan0
-     [root@host02 opc]# ip link set up dev vxlan0
+    [root@host02 opc]# ip link add vxlan0 type vxlan id 100 dev eth0
+    [root@host02 opc]# ip addr add 192.168.0.2/24 brd + dev vxlan0
+    [root@host02 opc]# ip link set up dev vxlan0
 
     [root@host02 opc]# ifconfig
     eth0   Link encap:Ethernet  HWaddr C6:B0:AE:55:E4:10
@@ -75,39 +77,39 @@ Now we are going to set IP address on host's eth0 and Mac address of vxlan0.
 At this time, You write down the vxlan0's IP address and MAC address to use on
 host02.
 
-   [root@host01 opc]# bridge fdb append 5E:EE:F2:AB:43:F9 dev vxlan0 dst
-   10.196.218.226
+    [root@host01 opc]# bridge fdb append 5E:EE:F2:AB:43:F9 dev vxlan0 dst
+    10.196.218.226
 
 And set up arp tables of vxlan network.
 
-   [root@host01 opc]# arp -s 192.168.0.2 5E:EE:F2:AB:43:F9
+    [root@host01 opc]# arp -s 192.168.0.2 5E:EE:F2:AB:43:F9
 
 [operation on host02 part2]
 
 As of host01, we make the other side host's setting on.
 
-   [root@host02 opc]# bridge fdb append 3E:2B:74:81:9D:B1 dev vxlan0 dst
-   10.196.218.222
-   [root@host02 opc]# arp -s 192.168.0.1 3E:2B:74:81:9D:B1
+    [root@host02 opc]# bridge fdb append 3E:2B:74:81:9D:B1 dev vxlan0 dst
+    10.196.218.222
+    [root@host02 opc]# arp -s 192.168.0.1 3E:2B:74:81:9D:B1
 
 Now you can use 192.168.0.0/24 network .
 The broadcast address and netmask is to be set by ip command as you like.
 
 [ broadcast/multicast ping ]
 
- [ on host01 ]
+    [ on host01 ]
 
-   [root@host01 opc]# route add -net 224.0.0.0/3 vxlan0
-   [root@host01 opc]# arp -s 224.0.0.1 5E:EE:F2:AB:43:F9
-   [root@host01 opc]# arp -s 192.168.0.255 5E:EE:F2:AB:43:F9
-   [root@host01 opc]# sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
+    [root@host01 opc]# route add -net 224.0.0.0/3 vxlan0
+    [root@host01 opc]# arp -s 224.0.0.1 5E:EE:F2:AB:43:F9
+    [root@host01 opc]# arp -s 192.168.0.255 5E:EE:F2:AB:43:F9
+    [root@host01 opc]# sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
 
- [ on host02 ]
+    [ on host02 ]
 
-   [root@host02 opc]# route add -net 224.0.0.0/3 vxlan0
-   [root@host02 opc]# arp -s 224.0.0.1 3E:2B:74:81:9D:B1
-   [root@host02 opc]# sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
-   [root@host02 opc]# arp -s 192.168.0.255 3E:2B:74:81:9D:B1
+    [root@host02 opc]# route add -net 224.0.0.0/3 vxlan0
+    [root@host02 opc]# arp -s 224.0.0.1 3E:2B:74:81:9D:B1
+    [root@host02 opc]# sysctl net.ipv4.icmp_echo_ignore_broadcasts=0
+    [root@host02 opc]# arp -s 192.168.0.255 3E:2B:74:81:9D:B1
 
  It may works.
 
@@ -116,10 +118,42 @@ The broadcast address and netmask is to be set by ip command as you like.
 
 Kernel ipv4/icmp.c icmp_discard() will block any multicast icmp packet silently.
 "net.ipv4.icmp_echo_ignore_broadcasts=0" will bypath it. It effects not only
-broadcast but multicast packet.
+broadcast but multicast packet.(It made by Alan Cox, He is my hero..)
+
+[ making more than one vxlan nic ]
+
+The vxlan NIC could be made more than one like vxlan0, vxlan1, vxlan2..
+It could be same procedure as above on one NIC, but new NIC must have uniq
+group ID.
+And you must be sure to make fake arp for another side host's NIC.
+
+If you have,
+
+    host01 (vxlan1) FA:2E:7E:95:55:E6
+    host02 (vxlan1) EE:2E:1B:1A:1C:44
+
+then
+
+    on host01,
+
+    [root@host01 opc]# arp -s 192.168.10.2 EE:2E:1B:1A:1C:44
+    [root@host01 opc]# bridge fdb append EE:2E:1B:1A:1C:44 dev vxlan1 dst
+    10.196.218.226
+
+and on host02,
+
+    [root@host02 opc]# arp -s 192.168.10.1 FA:2E:7E:95:55:E6
+    [root@host02 opc]# bridge fdb append FA:2E:7E:95:55:E6 dev vxlan1 dst
+    10.196.218.222
+
+done.
+
+[ reference document ]
 
 There is vxlan document on Linux Kernel for your reference.
 
 https://www.kernel.org/doc/Documentation/networking/vxlan.txt
 
 And vxlan.ko is the kernel module.
+
+https://github.com/kkoj/oracle_cloud/

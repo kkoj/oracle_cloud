@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-03-28 19:30:54 katsu> 
+# Time-stamp: <2016-03-29 00:06:51 katsu>
 #
 # Some program were needed for this script
 #
@@ -77,15 +77,7 @@ archive_download() {
 }
 
 archive_upload(){
-    echo -n "Which container do you want to use ? "
-    read ans
-    echo -n "Which file do you want to upload ? "
-    read ans2
-    FILE_NAME=`basename $ans2`
-    $CURL -X PUT -H "$AUTH_TOKEN" \
-	-H "X-Storage-Class: Archive" \
-	-T $ans2 $STORAGE_URL/$ans/$FILE_NAME
-    echo
+    upload
 }
 
 archive_restore() {
@@ -99,6 +91,8 @@ archive_restore() {
 
     if [ $STATUS = 200 ]; then
 	echo "Object has been restored or is being retrieved"
+    elif [ $STATUS = 202 ]; then
+	echo "Object is being retrieved"
     elif [ $STATUS = 404 ]; then
 	echo "The specified resource doesn't exist"
     else
@@ -144,29 +138,45 @@ delete() {
 }
 
 download() {
-    echo "Which file do you want to downlaod ? "
-    echo "\"containerName/objectName\""
+    echo "What containerName/objectName do you want to download ?"
     read ans
     FILE_NAME=`basename $ans`
-    STATUS=$($CURL -X GET -H "$AUTH_TOKEN" \
+    RET=$($CURL -X GET -H "$AUTH_TOKEN" \
 	 -w '%{http_code}' -o $FILE_NAME $STORAGE_URL/$ans )
 
+    # get the status code
+    STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
+
     if [ $STATUS = 200 ]; then
-	echo "Download is done."
+	echo "Object has been restored or is being retrieved"
+    elif [ $STATUS = 404 ]; then
+	echo "The specified resource doesn't exist"
+	rm $FILE_NAME
     else
-	head $FILE_NAME
-	echo
+	# It is not a status code.
+	echo $RET
+	rm $FILE_NAME
     fi
 }
 
-upload_file(){
-    echo -n "Which container do you want to use ? "
+upload(){
+    echo "Which container do you want to use ? "
     read ans
-    echo -n "Which file do you want to upload ? "
+    echo "Which file do you want to upload ? "
     read ans2
     FILE_NAME=`basename $ans2`
-    $CURL -X PUT -H "$AUTH_TOKEN" -T $ans2 $STORAGE_URL/$ans/$FILE_NAME
-    echo
+    RET=$($CURL -X PUT -H "$AUTH_TOKEN" \
+	-H "X-Storage-Class: Archive" \
+	-w '%{http_code}' \
+	-T $ans2 $STORAGE_URL/$ans/$FILE_NAME )
+    # get the status code
+    STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
+
+    if [ $STATUS = 201 ]; then
+	echo "Object was created"
+    else
+	echo $RET
+    fi
 }
 
 _upload_file(){
@@ -250,18 +260,20 @@ case "$1" in
 	;;
     upload)
 	get_auth
-	upload_file
+	upload
 	;;
     _upload)
 	get_auth
-	_upload_file $2 $3
+	_upload $2 $3
 	;;
     *)
-	echo "Usage: $0 { show | create | upload | delete }"
-	echo "  show     -- list container/object"
-	echo "  create   -- make new container"
-	echo "  upload   -- upload local file"
-	echo "  delete   -- delete container or container/object"
+	echo "Usage: $0 { list | create | upload | delete }"
+	echo "  list             -- list container/object"
+	echo "  create           -- make new container for standard storage"
+	echo "  archive-create   -- make new container for archive storage"
+	echo "  restore          -- restore archived file"
+	echo "  upload           -- upload local file"
+	echo "  delete           -- delete container or container/object"
 	echo
 	echo "When you want to down load archived files, restore it first."
 	exit 1

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-03-15 17:58:54 katsu> 
+## Time-stamp: <2016-03-30 01:39:10 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -56,15 +56,16 @@ get_cookie() {
 
     if [ -f $COOKIE_FILE ]; then
 	epoc=$(date '+%s')
-	EPOC=$( base64 -d $COOKIE_FILE \
-	    | LANG=C sed -e 's/\(.*\)expires\(.*\)expires\(.*\)/\2/' \
-	    | sed -e 's/\(.*\) \([0-9]\{10,\}.[0-9]\{3,\}\)\(.*\)/\2/' \
-	    | sed -e 's/\(.*\)\.\(.*\)/\1/')
+	EPOC=$( sed 's/^nimbula=//' $COOKIE_FILE | base64 --decode \
+	      | LANG=C sed 's/\(.*\)expires\(.*\)expires\(.*\)/\2/' \
+	      | sed -e 's/\(.*\) \([0-9]\{10,\}.[0-9]\{3,\}\)\(.*\)/\2/' \
+	      | sed -e 's/\(.*\)\.\(.*\)/\1/')
 
-#	echo "@$EPOC"
-#	echo "@$epoc"
-#	date --date="@$EPOC"
-#	date --date="@$epoc"
+#	echo "$EPOC"
+#	echo "$epoc"
+## If you use gnu date, it works
+#	date --date="$EPOC"
+#	date --date="$epoc"
 
 	if [ $(($EPOC-$epoc)) -gt $ADJ_TIME ]; then
 	    COMPUTE_COOKIE=$(cat $COOKIE_FILE)
@@ -255,7 +256,7 @@ seclist_create(){
     read json
     $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
-	-d @"$json" \
+	-d "$json" \
 	$IAAS_URL/seclist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
     echo
 }
