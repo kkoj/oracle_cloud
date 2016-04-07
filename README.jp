@@ -14,7 +14,11 @@ OPC_ACCOUNT="your_account"
 OPC_PASS="password"
 -------------------------------
 
-2. opc_compute.shに直接パラメーターを定義します。
+2. スクリプトに直接パラメーターを定義します。
+
+  #
+  # opc_compute.sh
+  #
 
    CONF_FILE_DIR="$HOME/bin"
    ADJ_TIME=9000
@@ -32,9 +36,19 @@ OPC_PASS="password"
 
   これらは get_cookie()内で echo と date で確認できるようにしています。
 
+  #
+  # opc_storage.sh
+  #
+
+   CONF_FILE_DIR="$HOME/bin"
+
+  CONF_FILE_DIR は opc_storage.sh がどこにあるか定義します。
+
 3. コマンドライン
 
    $ opc_compute.sh -l CONFIG_FILE show
 
+   $ opc_storage.sh -l CONFIG_FILE list
 
+--
 https://github.com/kkoj/oracle_cloud

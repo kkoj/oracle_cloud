@@ -14,7 +14,11 @@ OPC_ACCOUNT="your_account"
 OPC_PASS="password"
 -------------------------------
 
-2. set parameter in opc_compute.sh
+2. set parameter in the scripts
+
+  #
+  # opc_compute.sh
+  #
 
    CONF_FILE_DIR="$HOME/bin"
    ADJ_TIME=9000
@@ -32,8 +36,17 @@ OPC_PASS="password"
 
   There is echo and date options in get_cookie().
 
+  #
+  # opc_storage.sh
+  #
+
+  CONF_FILE_DIR is where opc_storage.sh deployed.
+
 3. command line
 
    $ opc_compute.sh -l CONFIG_FILE show
 
+   $ opc_storage.sh -l CONFIG_FILE list
+
+--
 https://github.com/kkoj/oracle_cloud
