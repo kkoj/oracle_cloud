@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-03-29 00:06:51 katsu>
+# Time-stamp: <2016-04-09 23:30:19 katsu>
 #
 # Some program were needed for this script
 #
 # "curl"
 
 ##
-## set paramaters
+## set parameters
 ##
 
 CONF_FILE_DIR="$HOME/bin"
@@ -267,15 +267,17 @@ case "$1" in
 	_upload $2 $3
 	;;
     *)
-	echo "Usage: $0 { list | create | upload | delete }"
-	echo "  list             -- list container/object"
-	echo "  create           -- make new container for standard storage"
-	echo "  archive-create   -- make new container for archive storage"
-	echo "  restore          -- restore archived file"
-	echo "  upload           -- upload local file"
-	echo "  delete           -- delete container or container/object"
-	echo
-	echo "When you want to down load archived files, restore it first."
+	cat <<-EOF
+	Usage: opc_storage.sh -l "CONFIG_FILE" { list | create | upload | delete }
+	  list             -- list container/object
+	  create           -- make new container for standard storage
+	  archive-create   -- make new container for archive storage
+	  restore          -- restore archived file
+	  upload           -- upload local file
+	  delete           -- delete container or container/object
+
+	When you want to down load archived files, restore it first.
+EOF
 	exit 1
 esac
 
