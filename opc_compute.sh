@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-09 22:43:29 katsu> 
+## Time-stamp: <2016-04-09 23:00:53 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -78,6 +78,7 @@ get_cookie() {
 # compare authenticate life time on cookie file and date command
 	if [ $(($EPOCH-$epoch)) -gt $ADJ_TIME ]; then
 	    COMPUTE_COOKIE=$(cat $COOKIE_FILE)
+	    STATUS="Authenticated with cache file $COOKIE_FILE"
 	else
 	    _get_cookie
 	fi
@@ -104,7 +105,7 @@ _get_cookie() {
     STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
 
     if [ $STATUS = 204 ]; then
-	echo Authenticated
+	STATUS="Authenticated"
     elif [ $STATUS = 401 ]; then
 	echo "Incorrect username or password"
     else
@@ -422,6 +423,7 @@ case $1 in
 	;;
     auth) 
 	get_cookie
+	echo $STATUS
 	;;
     imagelist)
 	get_cookie
