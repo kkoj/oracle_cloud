@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-10 01:54:49 katsu> 
+## Time-stamp: <2016-04-10 02:02:31 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -426,7 +426,7 @@ case $1 in
 	;;
     auth) 
 	get_cookie
-	echo $COMPUTE_COOKIE
+	echo $STATUS
 	;;
     imagelist)
 	get_cookie
