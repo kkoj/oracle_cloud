@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-09 23:00:53 katsu> 
+## Time-stamp: <2016-04-10 01:54:49 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -109,10 +109,13 @@ _get_cookie() {
     elif [ $STATUS = 401 ]; then
 	echo "Incorrect username or password"
     else
-	echo $RET
-	echo $STATUS
+	echo "IAAS_URL on CONFIG_FILE could not be reached."
+	echo
+	echo "IAAS_URL=$IAAS_URL"
+	echo
+	echo "Please check IAAS_URL on the web dashboard."
+	echo "It is the REST endpoint."
     fi
-
     rm $SESSION_ID
 }
 
@@ -423,7 +426,7 @@ case $1 in
 	;;
     auth) 
 	get_cookie
-	echo $STATUS
+	echo $COMPUTE_COOKIE
 	;;
     imagelist)
 	get_cookie
@@ -553,7 +556,7 @@ case $1 in
 	 shape      -- show OCPU + Memory size template
 	 imagelist  -- show OS and disk size template
 	 launchplan -- make an instance for temporary
-	EOF
+EOF
 
 	exit 1
 esac
