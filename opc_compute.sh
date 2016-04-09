@@ -1,12 +1,12 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-05 14:08:51 katsu> 
+## Time-stamp: <2016-04-09 22:43:29 katsu> 
 ##
 
 ## Some program were needed for this script
 ## "curl"
-## "jq"
+## "jq or python"
 ## "base64"
 
 #CURL="curl --trace-ascii erlog "
@@ -23,10 +23,12 @@ CONF_FILE_DIR="$HOME/bin"
 ADJ_TIME=9000
 
 ##
-## paramater parse ##
+## parameter parse ##
 ##
 
+# temporary text file for auth info
 SESSION_ID="temp-compute.$$"
+# cut the name of CONF_FILE from command line
 CONF_FILE_NAME=`echo $@ | sed -e 's/\(.*\)\(-l \)\(.*\)/\3/' | awk '{print $1}'`
 CONF_FILE=$CONF_FILE_DIR/$CONF_FILE_NAME
 COOKIE_FILE="compute_cookie-$CONF_FILE_NAME"
@@ -38,12 +40,12 @@ if [ -f $CONF_FILE ]; then
 	shift 2
     fi
 else
-    echo "please set your CONF_FILE with -l"
+    echo "please set your \"CONF_FILE\" with -l"
 fi  
 
 ##
 ## parameters
-##
+#
 
 OPC_URL=https://"$OPC_DOMAIN"."storage.oraclecloud.com"
 STORAGE_URL="$OPC_URL"/v1/Storage-"$OPC_DOMAIN"
@@ -53,21 +55,28 @@ STORAGE_URL="$OPC_URL"/v1/Storage-"$OPC_DOMAIN"
 ##
 
 get_cookie() {
-
     if [ -f $COOKIE_FILE ]; then
-	epoc=$(date '+%s')
-	EPOC=$( sed 's/^nimbula=//' $COOKIE_FILE | base64 --decode \
+	epoch=$(date '+%s')
+	EPOCH=$( sed 's/^nimbula=//' $COOKIE_FILE | base64 --decode \
 	    | LANG=C sed 's/\(.*\)expires\(.*\)expires\(.*\)/\2/' \
 	    | sed -e 's/\(.*\) \([0-9]\{10,\}.[0-9]\{3,\}\)\(.*\)/\2/' \
 	    | sed -e 's/\(.*\)\.\(.*\)/\1/')
 
-#	echo "$EPOC"
-#	echo "$epoc"
+#	echo "$EPOCH"
+#	echo "$epoch"
 ## If you use gnu date, it works
-#	date --date="$EPOC"
-#	date --date="$epoc"
+#	date --date="$EPOCH"
+#	date --date="$epoch"
 
-	if [ $(($EPOC-$epoc)) -gt $ADJ_TIME ]; then
+# check $EPOCH value is valid
+	RET=$(echo $EPOCH | sed -e 's/[0-9]\{10,\}/OK/')
+	if [ "$RET" != OK ]; then
+	    echo "Authentication has been failed"
+	    echo "Please delete the file (COOKIE_FILE) $COOKIE_FILE"
+	    exit 1
+	fi
+# compare authenticate life time on cookie file and date command
+	if [ $(($EPOCH-$epoch)) -gt $ADJ_TIME ]; then
 	    COMPUTE_COOKIE=$(cat $COOKIE_FILE)
 	else
 	    _get_cookie
@@ -75,21 +84,33 @@ get_cookie() {
     else
 	_get_cookie
     fi
-#    echo $(($EPOC-$epoc))
 
-# uncoment next line for no caching $COOKIE_FILE
+# uncomment next line for no caching $COOKIE_FILE
 #    rm $COOKIE_FILE
 
 }
 
 _get_cookie() {
 
-    $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
+    RET=$($CURL -X POST \
+	-H "Content-Type: application/oracle-compute-v3+json" \
+	-w '%{http_code}' \
 	-d "{\"user\":\"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT\",\
-              \"password\":\"$OPC_PASS\"}" \
-	$IAAS_URL/authenticate/ -D $SESSION_ID
+             \"password\":\"$OPC_PASS\"}" \
+	$IAAS_URL/authenticate/ -D $SESSION_ID )
     COMPUTE_COOKIE=$( grep -i Set-cookie $SESSION_ID | cut -d';' -f 1 \
 	| cut -d' ' -f 2 | tee $COOKIE_FILE )
+
+    STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
+
+    if [ $STATUS = 204 ]; then
+	echo Authenticated
+    elif [ $STATUS = 401 ]; then
+	echo "Incorrect username or password"
+    else
+	echo $RET
+	echo $STATUS
+    fi
 
     rm $SESSION_ID
 }
@@ -228,17 +249,17 @@ machineimage_create(){
     FILE_NAME="CentOS-7-x86_64-OracleCloud.raw.tar.gz"
     IMAGE_NAME=centos7-cui
     #    opc_storage.sh -l $CONF_FILE_NAME _upload compute_images $FILE_NAME
-    SISE=`opc_storage.sh -l $CONF_FILE_NAME _metadata $FILE_NAME`
-    SISE_TOTAL=`echo $SISE | tr -d '\r\n'`
-    echo $SISE_TOTAL
+    SIZE=`opc_storage.sh -l $CONF_FILE_NAME _metadata $FILE_NAME`
+    SIZE_TOTAL=`echo $SIZE | tr -d '\r\n'`
+    echo $SIZE_TOTAL
     $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
 	-d "{\"account\":\"/Compute-$OPC_DOMAIN/cloud_storage\",\
               \"name\":\"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$IMAGE_NAME\",\
               \"no_upload\":true,\
               \"file\":\"compute_images/$FILE_NAME\",\
-              \"sizes\":{\"upload\":$SISE_TOTAL,\
-              \"total\":$SISE_TOTAL}}" \
+              \"sizes\":{\"upload\":$SIZE_TOTAL,\
+              \"total\":$SIZE_TOTAL}}" \
 	$IAAS_URL/machineimage/
     echo
 }
@@ -388,7 +409,7 @@ storage_volume_info() {
 	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$1 | $JQ
 }
 
-storage_attatchment() {
+storage_attachment() {
     $CURL -X POST -H "Cookie: $COMPUTE_COOKIE" \
 	-H "Content-Type: application/oracle-compute-v3+json" \
 	$IAAS_URL/storage/attachment/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/
@@ -401,7 +422,6 @@ case $1 in
 	;;
     auth) 
 	get_cookie
-	echo $COMPUTE_COOKIE
 	;;
     imagelist)
 	get_cookie
@@ -508,7 +528,7 @@ case $1 in
 	storage_volume_create
 	;;
     create-minimal)
-	# Under constluction
+	# Under construction
 	get_cookie
 	sshkey
 	storage_volume_create
@@ -524,11 +544,15 @@ case $1 in
 	secrule_make_default_ssh
 	;;
     *)
-	echo "Usage: $0 { show | shape | imagelist | launchplan }"
-	echo "  show       -- show compute instance"
-	echo "  shape      -- show OCPU + Memory size template"
-	echo "  imagelist  -- show OS and disk size template "
-	echo "  launchplan -- make an instance for temporary "
+	cat <<-EOF
+	Usage: opc_compute.sh -l "CONF_FILE" { show | shape | imagelist | launchplan } 
+	 auth       -- authentication with Oracle Cloud
+	 show       -- show compute instance
+	 shape      -- show OCPU + Memory size template
+	 imagelist  -- show OS and disk size template
+	 launchplan -- make an instance for temporary
+	EOF
+
 	exit 1
 esac
 
