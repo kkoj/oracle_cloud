@@ -31,8 +31,8 @@ OPC_PASS="password"
   あいだには誤差があります。
   クッキーの寿命は 30 分間(1800秒)に設定されています。
 
-  $EPOC は Oracle Cloud ホストの unix timeです。
-  $epoc は お使いの端末の unix timeです。
+  $EPOCH は Oracle Cloud ホストの unix timeです。
+  $epoch は お使いの端末の unix timeです。
 
   これらは get_cookie()内で echo と date で確認できるようにしています。
 

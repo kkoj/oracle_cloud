@@ -1,10 +1,10 @@
 Oracle Cloud "Hello World Kit"
 
 There is some idea and solution for Oracle Cloud Service API and network.
-Just being adhook hack, it is not for sale and no warranty.
-But It is usefull for POC or understanding how to use Oracle Cloud Service.
+Just being ad-hook hack, it is not for sale and no warranty.
+But It is useful for POC or understanding how to use Oracle Cloud Service.
 
-1. make config file like this.
+1. make configuration file like this.
 
 CONFIG_FILE
 -------------------------------
@@ -29,10 +29,10 @@ OPC_PASS="password"
 
   There is difference between Oracle Cloud server's unix time and
   your terminal's unix time.
-  The cookie's life time is 30 minites(1800 seconds)
+  The cookie's life time is 30 minutes(1800 seconds)
 
-  $EPOC is Oracle Cloud server's unix time.
-  $epoc is your terminal's unix time.
+  $EPOCH is Oracle Cloud server's unix time.
+  $EPOCH is your terminal's unix time.
 
   There is echo and date options in get_cookie().
 
