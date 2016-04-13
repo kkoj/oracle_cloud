@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-13 17:24:15 katsu> 
+## Time-stamp: <2016-04-14 01:20:58 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -45,7 +45,7 @@ fi
 
 ##
 ## parameters
-#
+##
 
 OPC_URL=https://"$OPC_DOMAIN"."storage.oraclecloud.com"
 STORAGE_URL="$OPC_URL"/v1/Storage-"$OPC_DOMAIN"
@@ -114,7 +114,7 @@ _get_cookie() {
 	echo "IAAS_URL=$IAAS_URL"
 	echo
 	echo "Please check IAAS_URL on the web dashboard."
-	echo "It is the REST endpoint."
+	echo "It is the REST Endpoint."
     fi
     rm $SESSION_ID
 }
@@ -126,9 +126,8 @@ _get_cookie() {
 account() {
 
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
-	  -H "Content-Type: application/oracle-compute-v3+json" \
+	-H "Accept: application/oracle-compute-v3+directory+json"\
 	  $IAAS_URL/account/Compute-$OPC_DOMAIN/ | $JQ
-    echo
 }
 
 imagelist_info() {
@@ -153,12 +152,21 @@ instance() {
     echo "What instance/uuid do you want to show ?"
     read ans
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
-	  $IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans | $JQ
+	$IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans | $JQ
 }
 
 instances() {
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ
+}
+
+instances_list() {
+    echo
+    echo "### INSTANCE ###"
+    echo
+    $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ \
+	| sed -n -e 's/.*\"id\".*\(\/Compute-.*\)\".*/\1/p'
 }
 
 instance_delete() {
@@ -174,9 +182,34 @@ ipassociation() {
 }
 
 ipreservation() {
-    $CURL -X GET -H "Content-Type: application/oracle-compute-v3+json" \
+    $CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+}
+
+ipreservation_list() {
+# get account name which use global IP address
+    USER=($($CURL -X GET \
+	-H "Accept: application/oracle-compute-v3+directory+json"\
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/ | $JQ \
+	| sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p'))
+# get object for ipreservation
+# object is $USER[$i]/$OBJECT[$j]
+    echo
+    echo "### GLOBAL IP ADDRESS ###"
+    echo
+    for ((i = 0 ; i < ${#USER[@]};++i )) do
+    OBJECT=($($CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/${USER[$i]}/ \
+	| $JQ | sed -n -e 's/.*\"name\".*\/\(.*\)\".*/\1/p'))
+    for ((j = 0 ; j < ${#OBJECT[@]}; ++j )) do
+    echo /Compute-$OPC_DOMAIN/${USER[$i]}/${OBJECT[$j]}
+    done
+    done
 }
 
 ipreservation_create() {
@@ -206,9 +239,6 @@ launchplan() {
     echo "What is the sshkey ? (you must upload sshkey first.)"
     read SSHKEY
 
-#    ipreservation_create $HOST_NAME
-
-#    CURL="curl -v "
     RET=$($CURL -X POST \
 	-H "Content-Type: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
@@ -394,8 +424,8 @@ sshkey_info(){
 
 storage_attachment_info() {
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
-	-H "Content-Type: application/oracle-compute-v3+json" \
-    $IAAS_URL/storage/attachment/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+	-H "Accept: application/oracle-compute-v3+json" \
+    $IAAS_URL/storage/attachment/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/
     echo
 }
 
@@ -421,8 +451,18 @@ storage_volume_delete() {
 
 storage_volume_info() {
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
-	-H "Content-Type: application/oracle-compute-v3+json" \
+	-H "Accept: application/oracle-compute-v3+json" \
 	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$1 | $JQ
+}
+
+storage_volume_list() {
+    echo
+    echo "### STORAGE ###"
+    echo
+    $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
+	-H "Accept: application/oracle-compute-v3+json" \
+	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/ \
+	| $JQ | sed -n -e 's/.*\"name\":.*\(\/Compute-.*\)\",/\1/p'
 }
 
 storage_attachment() {
@@ -460,6 +500,10 @@ case $1 in
 	get_cookie
 	ipreservation
 	;;
+    ipreservation-list)
+	get_cookie
+	ipreservation_list
+	;;
     ipreservation-delete)
 	get_cookie
 	ipreservation_delete
@@ -479,6 +523,12 @@ case $1 in
     launchplan)
 	get_cookie
 	launchplan
+	;;
+    list)
+	get_cookie
+	instances_list
+	ipreservation_list
+	storage_volume_list
 	;;
     machineimage-create)
 	get_cookie
@@ -539,6 +589,10 @@ case $1 in
     storage-volume-info)
 	get_cookie
 	storage_volume_info
+	;;
+    storage-volume-list)
+	get_cookie
+	storage_volume_list
 	;;
     storage-volume-create)
 	get_cookie
