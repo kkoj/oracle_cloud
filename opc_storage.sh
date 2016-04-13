@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-04-09 23:30:19 katsu>
+# Time-stamp: <2016-04-13 17:08:25 katsu>
 #
 # Some program were needed for this script
 #
@@ -120,6 +120,7 @@ containers_info() {
 }    
 
 containers_list() {
+# object is $CONTAINER[$i]/$OBJECT[$j]
     CONTAINER=($($CURL -X GET -H "$AUTH_TOKEN" "$STORAGE_URL"))
     for ((i = 0 ; i < ${#CONTAINER[@]};++i )) do
     OBJECT=($($CURL -X GET -H "$AUTH_TOKEN" $STORAGE_URL/${CONTAINER[$i]}))
@@ -268,7 +269,7 @@ case "$1" in
 	;;
     *)
 	cat <<-EOF
-	Usage: opc_storage.sh -l "CONFIG_FILE" { list | create | upload | delete }
+	Usage: opc_storage.sh -l "CONFIG_FILE" { list | create | upload | ... }
 	  list             -- list container/object
 	  create           -- make new container for standard storage
 	  archive-create   -- make new container for archive storage
