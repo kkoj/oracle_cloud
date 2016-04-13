@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-13 16:59:23 katsu> 
+## Time-stamp: <2016-04-13 17:24:15 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -558,7 +558,7 @@ case $1 in
 	;;
     *)
 	cat <<-EOF
-	Usage: opc_compute.sh -l "CONF_FILE" { show | shape | imagelist | launchplan } 
+	Usage: opc_compute.sh -l "CONF_FILE" { auth | show | shape | ... } 
 	 auth       -- authentication with Oracle Cloud
 	 show       -- show compute instance
 	 shape      -- show OCPU + Memory size template
