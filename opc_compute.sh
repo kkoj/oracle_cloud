@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-14 01:20:58 katsu> 
+## Time-stamp: <2016-04-14 01:43:13 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -618,6 +618,7 @@ case $1 in
 	 shape      -- show OCPU + Memory size template
 	 imagelist  -- show OS and disk size template
 	 launchplan -- make an instance for temporary
+	 list       -- list all instance,ipreservation,storage volume
 EOF
 
 	exit 1
