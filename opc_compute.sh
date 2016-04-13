@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-10 02:02:31 katsu> 
+## Time-stamp: <2016-04-13 16:59:23 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -400,10 +400,22 @@ storage_attachment_info() {
 }
 
 storage_volume_create() {
+    echo "What name of the volume do you want to create ?"
+    read ans
+    echo "How much size of volume do you want ?"
+    read SIZE
     $CURL -X POST -H "Cookie: $COMPUTE_COOKIE" \
 	-H "Content-Type: application/oracle-compute-v3+json" \
-	-d "{ \"size\": \"$key\",\
-     	      \"properties\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans\"}" \
+	-d "{ \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans\",\
+     	      \"properties\": [\"/oracle/public/storage/default\"],\
+              \"size\": \"$SIZE\"}"\
+	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+}
+
+storage_volume_delete() {
+    $CURL -X POST -H "Cookie: $COMPUTE_COOKIE" \
+	-H "Content-Type: application/oracle-compute-v3+json" \
+	-d "{ \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans\"}" \
 	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
 }
 
@@ -524,7 +536,7 @@ case $1 in
 	get_cookie
 	storage_attachment_info
 	;;
-    storage-volume)
+    storage-volume-info)
 	get_cookie
 	storage_volume_info
 	;;
@@ -532,17 +544,13 @@ case $1 in
 	get_cookie
 	storage_volume_create
 	;;
+# Under construction
     create-minimal)
-	# Under construction
 	get_cookie
 	sshkey
 	storage_volume_create
 	seclist_add
 	ipreservation
-	;;
-    _ipreservation)
-	get_cookie
-	ipreservation_create
 	;;
     secrule_make_default_ssh)
 	get_cookie
