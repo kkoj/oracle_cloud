@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-14 11:14:26 katsu> 
+## Time-stamp: <2016-04-14 11:28:02 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -167,7 +167,8 @@ instances_list() {
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ \
 	| sed -n -e 's/.*\"name\".*\(\/Compute-.*\)\".*/\1/p' \
-	| sed -e 's/\(\/Compute-.*\/.*\/.*\/.*\)\/.*/\1/' | uniq
+	| sed -e 's/\(\/Compute-.*\/.*\/.*\/.*\)\/.*/\1/' | uniq \
+        | sed -n -e '/[0-9a-z]\{8\}-[0-9a-z]\{4\}-.*-.*-[0-9a-z]\{12\}/p'
 }
 
 instance_delete() {
