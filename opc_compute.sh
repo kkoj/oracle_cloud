@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-14 11:28:02 katsu> 
+## Time-stamp: <2016-04-14 11:42:48 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -164,6 +164,11 @@ instances_list() {
     echo
     echo "### INSTANCE ###"
     echo
+
+# sed:1 pick up object "name"
+# sed:2 ommit storage attachment uuid
+# sed:3 choose object with uuid
+
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ \
 	| sed -n -e 's/.*\"name\".*\(\/Compute-.*\)\".*/\1/p' \
