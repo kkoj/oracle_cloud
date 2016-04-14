@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-14 01:43:13 katsu> 
+## Time-stamp: <2016-04-14 11:14:26 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -166,7 +166,8 @@ instances_list() {
     echo
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ \
-	| sed -n -e 's/.*\"id\".*\(\/Compute-.*\)\".*/\1/p'
+	| sed -n -e 's/.*\"name\".*\(\/Compute-.*\)\".*/\1/p' \
+	| sed -e 's/\(\/Compute-.*\/.*\/.*\/.*\)\/.*/\1/' | uniq
 }
 
 instance_delete() {
@@ -190,13 +191,17 @@ ipreservation() {
 
 ipreservation_list() {
 # get account name which use global IP address
+# using "Accept: application/oracle-compute-v3+directory+json",
+# we could get another account name.
+# ipreservation objects are only being showed on owner account's
+# sub object with "Accept: application/oracle-compute-v3+json".
+
     USER=($($CURL -X GET \
 	-H "Accept: application/oracle-compute-v3+directory+json"\
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/ | $JQ \
 	| sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p'))
-# get object for ipreservation
-# object is $USER[$i]/$OBJECT[$j]
+# objects are being into $USER[$i]/$OBJECT[$j]
     echo
     echo "### GLOBAL IP ADDRESS ###"
     echo
