@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-14 11:42:48 katsu> 
+## Time-stamp: <2016-04-19 23:32:08 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -77,6 +77,7 @@ get_cookie() {
 	fi
 # compare authenticate life time on cookie file and date command
 	if [ $(($EPOCH-$epoch)) -gt $ADJ_TIME ]; then
+
 	    COMPUTE_COOKIE=$(cat $COOKIE_FILE)
 	    STATUS="Authenticated with cache file $COOKIE_FILE"
 	else
@@ -161,19 +162,36 @@ instances() {
 }
 
 instances_list() {
+    INSTANCE=/tmp/instance-$OPC_DOMAIN
     echo
     echo "### INSTANCE ###"
     echo
 
-# sed:1 pick up object "name"
-# sed:2 ommit storage attachment uuid
-# sed:3 choose object with uuid
+    # sed:1 pick up object "name"
+    # sed:2 omit storage attachment uuid
+    # sed:3 choose object with uuid
 
-    $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
-	$IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ \
+    INSTANCE_ID=($($CURL -X GET -H "Cookie:$COMPUTE_COOKIE" \
+	$IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ | tee $INSTANCE \
 	| sed -n -e 's/.*\"name\".*\(\/Compute-.*\)\".*/\1/p' \
 	| sed -e 's/\(\/Compute-.*\/.*\/.*\/.*\)\/.*/\1/' | uniq \
-        | sed -n -e '/[0-9a-z]\{8\}-[0-9a-z]\{4\}-.*-.*-[0-9a-z]\{12\}/p'
+	| sed -n -e '/[0-9a-z]\{8\}-[0-9a-z]\{4\}-.*-.*-[0-9a-z]\{12\}/p' ))
+
+    # get MAC address
+
+    MAC_ADDRESS=($(grep -A1 '\"address\":' $INSTANCE \
+	| sed -n -e 's/.*\"\(.*:.*:.*\)\",/\1/p'))
+
+    # get private IP address
+    PRIVATE_IP=($(grep '\"ip\":' $INSTANCE \
+	| sed -e 's/.*ip\": \"\(.*\)\",/\1/g' ))
+
+    # show MAC address and private IP address
+    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i )) do
+    echo ${INSTANCE_ID[$i]}
+    echo "${MAC_ADDRESS[$i]} ${PRIVATE_IP[$i]}"
+    done
+    rm $INSTANCE
 }
 
 instance_delete() {
@@ -184,11 +202,45 @@ instance_delete() {
 }
 
 ipassociation() {
+
+# connect vcable and ipreservation 
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+
+}
+
+ipassociation_list() {
+
+# same as ipreservation, pls see it's comment
+# get user account name
+
+    USER=($($CURL -X GET \
+	-H "Accept: application/oracle-compute-v3+directory+json"\
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/ | $JQ \
+	| sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p'))
+
+# get the object from all users account
+# objects into $USER[$i]/$OBJECT[$j]
+
+    for ((i = 0 ; i < ${#USER[@]};++i )) do
+#    echo ${USER[$i]}
+    OBJECT=($($CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/${USER[$i]}/ \
+	| $JQ \
+	| grep -e '\"name\"' -e '\"ip\"' \
+	| sed -e 's/.*\"name\":.*\(\/Compute-.*\)\",/\1/' \
+	| sed -e 's/.*\"ip\": \"\(.*\)\",/\1/' ))
+    for ((j = 0 ; j < ${#OBJECT[@]}; ++j )) do
+    echo ${OBJECT[$j]}
+    done
+    done
 }
 
 ipreservation() {
+# Global IP address
     $CURL -X GET \
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
@@ -202,23 +254,28 @@ ipreservation_list() {
 # ipreservation objects are only being showed on owner account's
 # sub object with "Accept: application/oracle-compute-v3+json".
 
+# get user account name
     USER=($($CURL -X GET \
 	-H "Accept: application/oracle-compute-v3+directory+json"\
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/ | $JQ \
 	| sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p'))
-# objects are being into $USER[$i]/$OBJECT[$j]
+# get the object from all users account
+# objects into $USER[$i]/$OBJECT[$j]
+
     echo
     echo "### GLOBAL IP ADDRESS ###"
     echo
     for ((i = 0 ; i < ${#USER[@]};++i )) do
+    echo ${USER[$i]}
     OBJECT=($($CURL -X GET \
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/${USER[$i]}/ \
-	| $JQ | sed -n -e 's/.*\"name\".*\/\(.*\)\".*/\1/p'))
+	| $JQ \
+	| sed -n -e 's/.*\"name\":.*\(\/Compute-.*\)\",/\1/p'))
     for ((j = 0 ; j < ${#OBJECT[@]}; ++j )) do
-    echo /Compute-$OPC_DOMAIN/${USER[$i]}/${OBJECT[$j]}
+    echo ${OBJECT[$j]}
     done
     done
 }
@@ -468,7 +525,7 @@ storage_volume_info() {
 
 storage_volume_list() {
     echo
-    echo "### STORAGE ###"
+    echo "### STORAGE VOLUME ###"
     echo
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	-H "Accept: application/oracle-compute-v3+json" \
@@ -537,9 +594,10 @@ case $1 in
 	;;
     list)
 	get_cookie
-	instances_list
-	ipreservation_list
-	storage_volume_list
+#	instances_list
+#	ipreservation_list
+#	storage_volume_list
+	ipassociation_list
 	;;
     machineimage-create)
 	get_cookie
