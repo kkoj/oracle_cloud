@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-19 23:32:08 katsu> 
+## Time-stamp: <2016-04-19 23:58:43 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -594,10 +594,10 @@ case $1 in
 	;;
     list)
 	get_cookie
-#	instances_list
-#	ipreservation_list
-#	storage_volume_list
-	ipassociation_list
+	instances_list
+	ipreservation_list
+	storage_volume_list
+#	ipassociation_list
 	;;
     machineimage-create)
 	get_cookie
