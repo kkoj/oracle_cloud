@@ -31,13 +31,13 @@ OPC_PASS="password"
   If your access to Oracle Cloud is first time,
   the output may be like this;
   
-   katsu@ubuntu2:~$ opc_compute.sh -l SITE1 auth
+   $ opc_compute.sh -l SITE1 auth
    Authenticated
 
   But if it is second time;
 
-   katsu@ubuntu2:~$ opc_compute.sh -l SITE1 auth
-   Authenticated with cache file compute_cookie-SITE2
+   $ opc_compute.sh -l SITE1 auth
+   Authenticated with cache file compute_cookie-SITE1
 
   It is using cache file.
   So authentication is too much over head time for many request,
