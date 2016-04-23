@@ -27,6 +27,22 @@ OPC_PASS="password"
 
   ADJ_TIME
 
+  The script has cache mechanism.
+  If your access to Oracle Cloud is first time,
+  the output may be like this;
+  
+   katsu@ubuntu2:~$ opc_compute.sh -l SITE1 auth
+   Authenticated
+
+  But if it is second time;
+
+   katsu@ubuntu2:~$ opc_compute.sh -l SITE1 auth
+   Authenticated with cache file compute_cookie-SITE2
+
+  It is using cache file.
+  So authentication is too much over head time for many request,
+  cache file may reduce waiting time.
+  
   There is difference between Oracle Cloud server's unix time and
   your terminal's unix time.
   The cookie's life time is 30 minutes(1800 seconds)
