@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-19 23:58:43 katsu> 
+## Time-stamp: <2016-04-23 22:42:46 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -21,6 +21,12 @@ JQ="python -m json.tool "
 
 CONF_FILE_DIR="$HOME/bin"
 ADJ_TIME=9000
+
+# Associative array
+# vcable and Global IP address
+declare -A VCABLE_GIP
+# Global IP address and host
+declare -A GIP_HOST
 
 ##
 ## parameter parse ##
@@ -164,21 +170,24 @@ instances() {
 instances_list() {
     INSTANCE=/tmp/instance-$OPC_DOMAIN
     echo
-    echo "### INSTANCE ###"
+    echo "          OBJECT list for the Domain $OPC_DOMAIN"
+    echo "============================================================="
+    echo "                    ### INSTANCE ###"
+    echo "============================================================="
     echo
 
     # sed:1 pick up object "name"
-    # sed:2 omit storage attachment uuid
+    # sed:2 omit storage attachment uuid by "uniq"
     # sed:3 choose object with uuid
 
+    # get HOST uuid
     INSTANCE_ID=($($CURL -X GET -H "Cookie:$COMPUTE_COOKIE" \
 	$IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ | tee $INSTANCE \
 	| sed -n -e 's/.*\"name\".*\(\/Compute-.*\)\".*/\1/p' \
 	| sed -e 's/\(\/Compute-.*\/.*\/.*\/.*\)\/.*/\1/' | uniq \
 	| sed -n -e '/[0-9a-z]\{8\}-[0-9a-z]\{4\}-.*-.*-[0-9a-z]\{12\}/p' ))
 
-    # get MAC address
-
+    # get eth0 MAC address
     MAC_ADDRESS=($(grep -A1 '\"address\":' $INSTANCE \
 	| sed -n -e 's/.*\"\(.*:.*:.*\)\",/\1/p'))
 
@@ -186,12 +195,35 @@ instances_list() {
     PRIVATE_IP=($(grep '\"ip\":' $INSTANCE \
 	| sed -e 's/.*ip\": \"\(.*\)\",/\1/g' ))
 
-    # show MAC address and private IP address
+    # get vcable id
+    VCABLE_ID=($(sed -n -e 's/.*\"vcable_id\".*\/.*\/.*\/\(.*\)\",/\1/p' \
+	$INSTANCE ))
+
+    # show information
+    # show account name and host name
     for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i )) do
-    echo ${INSTANCE_ID[$i]}
-    echo "${MAC_ADDRESS[$i]} ${PRIVATE_IP[$i]}"
+    USER=$( echo ${INSTANCE_ID[$i]} \
+	| sed -e "s/\/Compute-$OPC_DOMAIN\/\([^/]*\).*/\1/" )
+    NAME=$( echo ${INSTANCE_ID[$i]} \
+	| sed -e "s/\/Compute-$OPC_DOMAIN\/[^/]*\(.*\)/\1/" \
+	-e 's/^\///' )
+    echo "USER:               $USER"
+    echo "NAME:               $NAME"
+    # show MAC address and private IP address
+    echo "MAC ADDRESS:        ${MAC_ADDRESS[$i]}"
+    echo "PRIVATE IP ADDRESS: ${PRIVATE_IP[$i]}"
+    # show global IP address
+    # VCABLE_GIP is a global parameter gotten in ipassociation_list
+    # get global IP address from VCABLE_GIP
+    echo "GLOBAL IP ADDRESS:  ${VCABLE_GIP[${VCABLE_ID[$i]}]}"
+    echo
+    # to simplify
+    GIP=${VCABLE_GIP[${VCABLE_ID[$i]}]}
+    # set global IP address and HOST name into HOST_GIP
+    # to use ipreservation_list
+    GIP_HOST[$GIP]=$NAME
     done
-    rm $INSTANCE
+#    rm $INSTANCE
 }
 
 instance_delete() {
@@ -203,16 +235,17 @@ instance_delete() {
 
 ipassociation() {
 
-# connect vcable and ipreservation 
+    # connect vcable and ipreservation 
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
 
 }
 
 ipassociation_list() {
+    IP_ASSOC=/tmp/ipassociation-$OPC_DOMAIN
 
-# same as ipreservation, pls see it's comment
-# get user account name
+    # same as ipreservation, pls see it's comment
+    # get user account name
 
     USER=($($CURL -X GET \
 	-H "Accept: application/oracle-compute-v3+directory+json"\
@@ -220,27 +253,36 @@ ipassociation_list() {
 	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/ | $JQ \
 	| sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p'))
 
-# get the object from all users account
-# objects into $USER[$i]/$OBJECT[$j]
+    # get the object from all users account
+    # objects into $USER[$i]/$OBJECT[$j]
+    # $OBJECT is array of ipassociation name and ip address 
 
+    # get IP_ASSOC number of USER times
     for ((i = 0 ; i < ${#USER[@]};++i )) do
-#    echo ${USER[$i]}
-    OBJECT=($($CURL -X GET \
+
+    # get global IP address
+
+    IP_ADDR=($($CURL -X GET \
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/${USER[$i]}/ \
-	| $JQ \
-	| grep -e '\"name\"' -e '\"ip\"' \
-	| sed -e 's/.*\"name\":.*\(\/Compute-.*\)\",/\1/' \
-	| sed -e 's/.*\"ip\": \"\(.*\)\",/\1/' ))
-    for ((j = 0 ; j < ${#OBJECT[@]}; ++j )) do
-    echo ${OBJECT[$j]}
+	| $JQ | tee $IP_ASSOC \
+	| sed -n -e 's/.*\"ip\": \"\(.*\)\",/\1/p' ))
+
+    # get vcable_id
+    VCABLE=($(grep '\"vcable\":' $IP_ASSOC \
+	| sed -n -e 's/.*\"vcable\": \"\/.*\/.*\/\(.*\)\"/\1/p'))
+
+    # set global IP address into VCABLE_GIP
+    for ((j = 0 ; j < ${#IP_ADDR[@]}; ++j )) do
+    VCABLE_GIP[${VCABLE[$j]}]="${IP_ADDR[$j]}"
     done
     done
+    rm $IP_ASSOC
 }
 
 ipreservation() {
-# Global IP address
+    # Global IP address
     $CURL -X GET \
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
@@ -248,36 +290,48 @@ ipreservation() {
 }
 
 ipreservation_list() {
-# get account name which use global IP address
-# using "Accept: application/oracle-compute-v3+directory+json",
-# we could get another account name.
-# ipreservation objects are only being showed on owner account's
-# sub object with "Accept: application/oracle-compute-v3+json".
+    IP_RESERV=/tmp/ipreservation-$OPC_DOMAIN
+    # get account name which use global IP address
+    # using "Accept: application/oracle-compute-v3+directory+json",
+    # we could get another account name.
+    # ipreservation objects are only being showed on owner account's
+    # sub object with "Accept: application/oracle-compute-v3+json".
 
-# get user account name
+    # get user account name
     USER=($($CURL -X GET \
 	-H "Accept: application/oracle-compute-v3+directory+json"\
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/ | $JQ \
-	| sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p'))
-# get the object from all users account
-# objects into $USER[$i]/$OBJECT[$j]
+	| sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p' ))
+
+    # get the object from all users account
+    # objects into $USER[$i]/$OBJECT[$j]
 
     echo
-    echo "### GLOBAL IP ADDRESS ###"
-    echo
+    echo "============================================================="
+    echo "         ### GLOBAL IP ADDRESS (IP RESERVATION) ###"
+    echo "============================================================="
     for ((i = 0 ; i < ${#USER[@]};++i )) do
-    echo ${USER[$i]}
-    OBJECT=($($CURL -X GET \
+    echo
+    # show ACCOUNT name
+    echo "USER: ${USER[$i]}"
+    GLOBAL_IP=($($CURL -X GET \
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/${USER[$i]}/ \
-	| $JQ \
-	| sed -n -e 's/.*\"name\":.*\(\/Compute-.*\)\",/\1/p'))
-    for ((j = 0 ; j < ${#OBJECT[@]}; ++j )) do
-    echo ${OBJECT[$j]}
+	| $JQ | tee $IP_RESERV \
+	| grep -e '\"ip\"' \
+	| sed -n -e 's/.*\"ip\": \"\(.*\)\",/\1/p' ))
+    echo "-------------------------------------------------------------"
+    echo -e "IP ADDRESS\tHOST UUID"
+
+    # show Global IP Address with GIP_HOST from instance_list
+    for ((j = 0 ; j < ${#GLOBAL_IP[@]}; ++j )) do
+    echo -e "${GLOBAL_IP[$j]}\t${GIP_HOST[${GLOBAL_IP[$j]}]}"
     done
+    echo "-------------------------------------------------------------"
     done
+    rm $IP_RESERV
 }
 
 ipreservation_create() {
@@ -346,8 +400,8 @@ machineimage() {
 # POST /machineimage/, POST /imagelist/, and POST /imagelistentry/ methods
 
 machineimage_create(){
-#    echo "What is the name of machineimage on storage cloud ?"
-#    read FILE_NAME
+    #    echo "What is the name of machineimage on storage cloud ?"
+    #    read FILE_NAME
     FILE_NAME="CentOS-7-x86_64-OracleCloud.raw.tar.gz"
     IMAGE_NAME=centos7-cui
     #    opc_storage.sh -l $CONF_FILE_NAME _upload compute_images $FILE_NAME
@@ -384,13 +438,13 @@ shape() {
 }    
 
 secassociation() {
-# endpoint: secassociation/vcable_uuid/secassociation_uuid
+    # endpoint: secassociation/vcable_uuid/secassociation_uuid
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/secassociation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
 }    
 
 secassociation_create() {
-# endpoint: secassociation/vcable_uuid/secassociation_uuid
+    # endpoint: secassociation/vcable_uuid/secassociation_uuid
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/secassociation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
 }    
@@ -498,6 +552,7 @@ storage_attachment_info() {
 }
 
 storage_volume_create() {
+
     echo "What name of the volume do you want to create ?"
     read ans
     echo "How much size of volume do you want ?"
@@ -525,8 +580,9 @@ storage_volume_info() {
 
 storage_volume_list() {
     echo
-    echo "### STORAGE VOLUME ###"
-    echo
+    echo "============================================================="
+    echo "                   ### STORAGE VOLUME ###"
+    echo "============================================================="
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	-H "Accept: application/oracle-compute-v3+json" \
 	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/ \
@@ -594,10 +650,10 @@ case $1 in
 	;;
     list)
 	get_cookie
+	ipassociation_list
 	instances_list
 	ipreservation_list
 	storage_volume_list
-#	ipassociation_list
 	;;
     machineimage-create)
 	get_cookie
@@ -643,6 +699,12 @@ case $1 in
 	get_cookie
 	instances
 	;;
+    show-network)
+	get_cookie
+	instances_list
+	ipreservation_list
+	ipassociation_list
+	;;
     sshkey)
 	get_cookie
 	sshkey
@@ -675,10 +737,18 @@ case $1 in
 	seclist_add
 	ipreservation
 	;;
+    corente-storage-create)
+	get_cookie
+	storage_volume_create
+	;;
     secrule_make_default_ssh)
 	get_cookie
 	secrule_make_default_ssh
 	;;
+    ipassociation-list)
+    get_cookie
+    ipassociation_list
+    ;;
     *)
 	cat <<-EOF
 	Usage: opc_compute.sh -l "CONF_FILE" { auth | show | shape | ... } 
