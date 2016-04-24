@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-23 22:42:46 katsu> 
+## Time-stamp: <2016-04-24 10:11:33 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -139,8 +139,19 @@ account() {
 
 imagelist_info() {
 
-    $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
-	$IAAS_URL/imagelist/oracle/public/ | $JQ
+    IMAGELIST=/tmp/imagelist-$OPC_DOMAIN
+
+    IMAGENAME=($($CURL -X GET -H "Cookie:$COMPUTE_COOKIE" \
+	$IAAS_URL/imagelist/oracle/public/ | $JQ | tee $IMAGELIST \
+        | sed -n -e 's/.*\"name\": \"\/oracle\/public\/\(.*\)\",/\1/p'))
+    _IFS=$IFS
+    IFS=$'\n'
+    IMAGEDESC=($(sed -n -e 's/.*\"description\": \(.*\),/\1/p' $IMAGELIST ))
+    for ((i = 0 ; i < ${#IMAGEDESC[@]};++i )) do
+    echo  "${IMAGENAME[$i]}   ${IMAGEDESC[$i]}"
+    done
+    IFS=$_IFS
+#    rm $IMAGELIST
 }
 
 imagelist_user_defined_info() {
@@ -192,8 +203,7 @@ instances_list() {
 	| sed -n -e 's/.*\"\(.*:.*:.*\)\",/\1/p'))
 
     # get private IP address
-    PRIVATE_IP=($(grep '\"ip\":' $INSTANCE \
-	| sed -e 's/.*ip\": \"\(.*\)\",/\1/g' ))
+    PRIVATE_IP=($(sed -n -e 's/.*\"ip\": \"\(.*\)\",/\1/p' $INSTANCE ))
 
     # get vcable id
     VCABLE_ID=($(sed -n -e 's/.*\"vcable_id\".*\/.*\/.*\/\(.*\)\",/\1/p' \
@@ -270,8 +280,7 @@ ipassociation_list() {
 	| sed -n -e 's/.*\"ip\": \"\(.*\)\",/\1/p' ))
 
     # get vcable_id
-    VCABLE=($(grep '\"vcable\":' $IP_ASSOC \
-	| sed -n -e 's/.*\"vcable\": \"\/.*\/.*\/\(.*\)\"/\1/p'))
+    VCABLE=($(sed -n -e 's/.*\"vcable\": \"\/.*\/.*\/\(.*\)\"/\1/p' $IP_ASSOC))
 
     # set global IP address into VCABLE_GIP
     for ((j = 0 ; j < ${#IP_ADDR[@]}; ++j )) do
@@ -320,7 +329,6 @@ ipreservation_list() {
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/${USER[$i]}/ \
 	| $JQ | tee $IP_RESERV \
-	| grep -e '\"ip\"' \
 	| sed -n -e 's/.*\"ip\": \"\(.*\)\",/\1/p' ))
     echo "-------------------------------------------------------------"
     echo -e "IP ADDRESS\tHOST UUID"
@@ -736,10 +744,6 @@ case $1 in
 	storage_volume_create
 	seclist_add
 	ipreservation
-	;;
-    corente-storage-create)
-	get_cookie
-	storage_volume_create
 	;;
     secrule_make_default_ssh)
 	get_cookie
