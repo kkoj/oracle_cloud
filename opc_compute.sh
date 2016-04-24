@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-24 10:15:10 katsu> 
+## Time-stamp: <2016-04-24 11:36:26 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -441,10 +441,6 @@ role() {
     echo
 }
 
-shape() {
-    $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" $IAAS_URL/shape/ | $JQ
-}    
-
 secassociation() {
     # endpoint: secassociation/vcable_uuid/secassociation_uuid
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
@@ -531,6 +527,35 @@ secrule_make_default_ssh() {
 	secrule_create
     fi
 }
+
+shape() {
+#    $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" $IAAS_URL/shape/ | $JQ
+
+    SHAPELIST=/tmp/shape-$OPC_DOMAIN
+
+    SHAPE=($($CURL -X GET -H "Cookie:$COMPUTE_COOKIE" \
+	$IAAS_URL/shape/ | $JQ | tee $SHAPELIST \
+        | sed -n -e 's/.*\"name\": \"\(.*\)\",/\1/p'))
+    CORE=($(sed -n -e 's/.*\"cpus\": \(.*\)\.0,/\1/p' $SHAPELIST ))
+    RAM=($(sed -n -e 's/.*\"ram\": \(.*\),/\1/p' $SHAPELIST ))
+    _IFS=$IFS
+    IFS=$'\n'
+
+    echo "----------------------------------------"
+    echo -e "SHAPE\t  CORE\t oCPU\t RAM(GB)"
+    echo "----------------------------------------"
+
+    for ((i = 0 ; i < ${#SHAPE[@]};++i )) do
+    RAM_GB=$(( ${RAM[$i]} / 1024 ))
+    OCPU=$((${CORE[$i]} / 2))
+
+    printf "%s  \t %5d\t" ${SHAPE[$i]} ${CORE[$i]}
+    printf "%5d  %5d\n" $OCPU $RAM_GB
+
+    done
+    IFS=$_IFS
+    rm $SHAPELIST
+}    
 
 sshkey(){
     echo "It will upload $HOME/.ssh/id_rsa.pub to the cloud" 
