@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-24 10:11:33 katsu> 
+## Time-stamp: <2016-04-24 10:15:10 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -151,7 +151,7 @@ imagelist_info() {
     echo  "${IMAGENAME[$i]}   ${IMAGEDESC[$i]}"
     done
     IFS=$_IFS
-#    rm $IMAGELIST
+    rm $IMAGELIST
 }
 
 imagelist_user_defined_info() {
