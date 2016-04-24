@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-24 11:36:26 katsu> 
+## Time-stamp: <2016-04-24 12:41:13 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -147,8 +147,10 @@ imagelist_info() {
     _IFS=$IFS
     IFS=$'\n'
     IMAGEDESC=($(sed -n -e 's/.*\"description\": \(.*\),/\1/p' $IMAGELIST ))
+    echo "         SHAPE                      \"DESCRIPTION\""
+    echo "-------------------------------------------------------------"
     for ((i = 0 ; i < ${#IMAGEDESC[@]};++i )) do
-    echo  "${IMAGENAME[$i]}   ${IMAGEDESC[$i]}"
+    printf "%-35s %s\n" ${IMAGENAME[$i]} ${IMAGEDESC[$i]}
     done
     IFS=$_IFS
     rm $IMAGELIST
@@ -180,13 +182,14 @@ instances() {
 
 instances_list() {
     INSTANCE=/tmp/instance-$OPC_DOMAIN
+    if [ "$1" == list ]; then
     echo
     echo "          OBJECT list for the Domain $OPC_DOMAIN"
+    fi
     echo "============================================================="
     echo "                    ### INSTANCE ###"
     echo "============================================================="
     echo
-
     # sed:1 pick up object "name"
     # sed:2 omit storage attachment uuid by "uniq"
     # sed:3 choose object with uuid
@@ -684,7 +687,7 @@ case $1 in
     list)
 	get_cookie
 	ipassociation_list
-	instances_list
+	instances_list list
 	ipreservation_list
 	storage_volume_list
 	;;
@@ -730,7 +733,8 @@ case $1 in
 	;;
     show)
 	get_cookie
-	instances
+	ipassociation_list
+	instances_list
 	;;
     show-network)
 	get_cookie
@@ -783,7 +787,7 @@ case $1 in
 	Usage: opc_compute.sh -l "CONF_FILE" { auth | show | shape | ... } 
 	 auth       -- authentication with Oracle Cloud
 	 show       -- show compute instance
-	 shape      -- show OCPU + Memory size template
+	 shape      -- show oCPU + Memory size template
 	 imagelist  -- show OS and disk size template
 	 launchplan -- make an instance for temporary
 	 list       -- list all instance,ipreservation,storage volume
