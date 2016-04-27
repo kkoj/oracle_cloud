@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-24 12:41:13 katsu> 
+## Time-stamp: <2016-04-27 15:18:05 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -11,7 +11,7 @@
 
 #CURL="curl --trace-ascii erlog "
 #CURL="curl -s -x http://your.proxy:80"
-CURL="curl -s "
+CURL="curl -s"
 #JQ="jq . "
 JQ="python -m json.tool "
 
@@ -47,6 +47,7 @@ if [ -f $CONF_FILE ]; then
     fi
 else
     echo "please set your \"CONF_FILE\" with -l"
+    exit 1
 fi  
 
 ##
@@ -472,12 +473,21 @@ seclist() {
 seclist_create(){
     echo -n "What is the name of container do you create ? "
     read ans
+    if [[ "$ans" =~ ^default$|^default/default$ ]]; then
+	$CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -d "{\"name\": \"/Compute-$OPC_DOMAIN/default/default4\",
+                 \"outbound_cidr_policy\": \"PERMIT\",
+                 \"policy\": \"DENY\" }" \
+	    $IAAS_URL/seclist/Compute-$OPC_DOMAIN/$ans
+    else
     echo -n "Which is JSON file ? "
     read json
-    $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
-	-H "Cookie: $COMPUTE_COOKIE" \
-	-d "$json" \
-	$IAAS_URL/seclist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
+	$CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
+            -H "Cookie: $COMPUTE_COOKIE" \
+            -d @"$json" \
+            $IAAS_URL/seclist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
+    fi
     echo
 }
 
@@ -792,7 +802,6 @@ case $1 in
 	 launchplan -- make an instance for temporary
 	 list       -- list all instance,ipreservation,storage volume
 EOF
-
 	exit 1
 esac
 
