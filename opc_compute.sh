@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-27 15:18:05 katsu> 
+## Time-stamp: <2016-04-27 15:52:40 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -476,7 +476,7 @@ seclist_create(){
     if [[ "$ans" =~ ^default$|^default/default$ ]]; then
 	$CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
 	    -H "Cookie: $COMPUTE_COOKIE" \
-	    -d "{\"name\": \"/Compute-$OPC_DOMAIN/default/default4\",
+	    -d "{\"name\": \"/Compute-$OPC_DOMAIN/default/default\",
                  \"outbound_cidr_policy\": \"PERMIT\",
                  \"policy\": \"DENY\" }" \
 	    $IAAS_URL/seclist/Compute-$OPC_DOMAIN/$ans
