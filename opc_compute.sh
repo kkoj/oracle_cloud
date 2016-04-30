@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-27 15:52:40 katsu> 
+## Time-stamp: <2016-04-30 23:38:50 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -22,12 +22,20 @@ JQ="python -m json.tool "
 CONF_FILE_DIR="$HOME/bin"
 ADJ_TIME=9000
 
-# Associative array
-# vcable and Global IP address
-declare -A VCABLE_GIP
-# Global IP address and host
-declare -A GIP_HOST
-
+# Bash 4 has Associative array.If bash is ver4 on this environment,
+# we use associative array.
+BASH_VERSION=$(LANG=C bash --version \
+    |sed -n -e 's/GNU bash, version \([0-9]\).*/\1/p')
+if [ $BASH_VERSION -ge 4 ]; then
+# VCABLE_GIP is vcable and Global IP address
+# GIP_HOST is Global IP address and host
+    declare -A VCABLE_GIP
+    declare -A GIP_HOST
+else
+    declare -a HOST_INDEX
+    declare -a VCABLE_INDEX
+    declare -a GLOBAL_IP_INDEX
+fi
 ##
 ## parameter parse ##
 ##
@@ -191,6 +199,7 @@ instances_list() {
     echo "                    ### INSTANCE ###"
     echo "============================================================="
     echo
+
     # sed:1 pick up object "name"
     # sed:2 omit storage attachment uuid by "uniq"
     # sed:3 choose object with uuid
@@ -227,17 +236,30 @@ instances_list() {
     echo "MAC ADDRESS:        ${MAC_ADDRESS[$i]}"
     echo "PRIVATE IP ADDRESS: ${PRIVATE_IP[$i]}"
     # show global IP address
+
+    if [ $BASH_VERSION = 4 ]; then
     # VCABLE_GIP is a global parameter gotten in ipassociation_list
     # get global IP address from VCABLE_GIP
     echo "GLOBAL IP ADDRESS:  ${VCABLE_GIP[${VCABLE_ID[$i]}]}"
     echo
-    # to simplify
+    # link vcable and global IP address
     GIP=${VCABLE_GIP[${VCABLE_ID[$i]}]}
     # set global IP address and HOST name into HOST_GIP
     # to use ipreservation_list
     GIP_HOST[$GIP]=$NAME
+    else
+	for ((m = 0 ; m < ${#VCABLE_INDEX[@]}; ++m )) do
+	if [ ${VCABLE_ID[$i]} = ${VCABLE_INDEX[$m]} ]; then
+	    echo "GLOBAL IP ADDRESS:  ${GLOBAL_IP_INDEX[$m]}"
+	    echo
+	    HOST_INDEX[$m]=$NAME
+	    break
+	fi
+	done
+    fi
     done
-#    rm $INSTANCE
+
+ rm $INSTANCE
 }
 
 instance_delete() {
@@ -252,13 +274,14 @@ ipassociation() {
     # connect vcable and ipreservation 
     $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
-
 }
 
 ipassociation_list() {
     IP_ASSOC=/tmp/ipassociation-$OPC_DOMAIN
 
-    # same as ipreservation, pls see it's comment
+    # ipassociation has information of vcable and global IP connection,
+    # VCABLE and GLOBAL_IP
+
     # get user account name
 
     USER=($($CURL -X GET \
@@ -271,27 +294,38 @@ ipassociation_list() {
     # objects into $USER[$i]/$OBJECT[$j]
     # $OBJECT is array of ipassociation name and ip address 
 
-    # get IP_ASSOC number of USER times
+    # get all USER's information from IP_ASSOC
+
     for ((i = 0 ; i < ${#USER[@]};++i )) do
 
+    echo checking ${USER[$i]},
     # get global IP address
 
-    IP_ADDR=($($CURL -X GET \
+    GLOBAL_IP=($($CURL -X GET \
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/${USER[$i]}/ \
-	| $JQ | tee $IP_ASSOC \
+	| $JQ | tee $IP_ASSOC-${USER[$i]} \
 	| sed -n -e 's/.*\"ip\": \"\(.*\)\",/\1/p' ))
 
     # get vcable_id
-    VCABLE=($(sed -n -e 's/.*\"vcable\": \"\/.*\/.*\/\(.*\)\"/\1/p' $IP_ASSOC))
+
+    VCABLE=($(sed -n -e 's/.*\"vcable\": \"\/.*\/.*\/\(.*\)\"/\1/p' \
+	$IP_ASSOC-${USER[$i]}))
 
     # set global IP address into VCABLE_GIP
-    for ((j = 0 ; j < ${#IP_ADDR[@]}; ++j )) do
-    VCABLE_GIP[${VCABLE[$j]}]="${IP_ADDR[$j]}"
+    if [ $BASH_VERSION = 4 ]; then
+	for ((j = 0 ; j < ${#GLOBAL_IP[@]}; ++j )) do
+	VCABLE_GIP[${VCABLE[$j]}]=${GLOBAL_IP[$j]}
+	done
+    else
+	for ((j = 0 ; j < ${#GLOBAL_IP[@]}; ++j )) do
+	VCABLE_INDEX[${#VCABLE_INDEX[@]}]=${VCABLE[$j]}
+	GLOBAL_IP_INDEX[${#GLOBAL_IP_INDEX[@]}]=${GLOBAL_IP[$j]}
+	done
+    fi
+    rm $IP_ASSOC-${USER[$i]}		    
     done
-    done
-    rm $IP_ASSOC
 }
 
 ipreservation() {
@@ -306,9 +340,10 @@ ipreservation_list() {
     IP_RESERV=/tmp/ipreservation-$OPC_DOMAIN
     # get account name which use global IP address
     # using "Accept: application/oracle-compute-v3+directory+json",
-    # we could get another account name.
-    # ipreservation objects are only being showed on owner account's
+    # we could get not only $OPC_ACCOUNT but another account name.
+    # And ipreservation objects are only being showed on owner account's
     # sub object with "Accept: application/oracle-compute-v3+json".
+    # That is why tring to get USER first and to get each sub objects.
 
     # get user account name
     USER=($($CURL -X GET \
@@ -337,13 +372,27 @@ ipreservation_list() {
     echo "-------------------------------------------------------------"
     echo -e "IP ADDRESS\tHOST UUID"
 
-    # show Global IP Address with GIP_HOST from instance_list
-    for ((j = 0 ; j < ${#GLOBAL_IP[@]}; ++j )) do
-    echo -e "${GLOBAL_IP[$j]}\t${GIP_HOST[${GLOBAL_IP[$j]}]}"
-    done
+    if [ $BASH_VERSION = 4 ]; then
+	# show Global IP Address with GIP_HOST from instance_list
+	for ((j = 0 ; j < ${#GLOBAL_IP[@]}; ++j )) do
+	echo -e "${GLOBAL_IP[$j]}\t${GIP_HOST[${GLOBAL_IP[$j]}]}"
+	done
+    else
+	for ((m = 0 ; m < ${#GLOBAL_IP[@]}; ++m )) do
+	for ((n = 0 ; n < ${#GLOBAL_IP_INDEX[@]}; ++n )) do
+	if [ ${GLOBAL_IP[$m]} = ${GLOBAL_IP_INDEX[$n]} ]; then
+	    echo -e "${GLOBAL_IP_INDEX[$n]}\t${HOST_INDEX[$n]}"
+	    break
+	elif [ $n = $((${#GLOBAL_IP_INDEX[@]} - 1)) ]; then
+	    echo -e "${GLOBAL_IP[$m]}"
+	fi
+	done
+	done
+    fi
     echo "-------------------------------------------------------------"
     done
-    rm $IP_RESERV
+    
+#    rm $IP_RESERV
 }
 
 ipreservation_create() {
@@ -665,6 +714,10 @@ case $1 in
     ipassociation)
 	get_cookie
 	ipassociation
+	;;
+    ipassociation-list)
+	get_cookie
+	ipassociation_list
 	;;
     ipreservation)
 	get_cookie
