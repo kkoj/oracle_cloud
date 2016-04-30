@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-04-13 17:08:25 katsu>
+# Time-stamp: <2016-04-25 16:27:01 katsu>
 #
 # Some program were needed for this script
 #
@@ -120,6 +120,7 @@ containers_info() {
 }    
 
 containers_list() {
+
 # object is $CONTAINER[$i]/$OBJECT[$j]
     CONTAINER=($($CURL -X GET -H "$AUTH_TOKEN" "$STORAGE_URL"))
     for ((i = 0 ; i < ${#CONTAINER[@]};++i )) do
@@ -228,7 +229,7 @@ case "$1" in
 	;;
     delete)
 	get_auth
-	containers_info
+	containers_list
 	delete
 	;;
     download)

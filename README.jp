@@ -30,12 +30,12 @@ OPC_PASS="password"
   スクリプトにはキャシュ機能が設けられています。
   もしはじめてオラクルクラウドに接続した場合の出力はこのようになります。
 
-   katsu@ubuntu2:~$ opc_compute.sh -l SITE1 auth
+   $ opc_compute.sh -l SITE1 auth
    Authenticated
 
   でも、二度目ならばこのようになります。
 
-   katsu@ubuntu2:~$ opc_compute.sh -l SITE1 auth
+   $ opc_compute.sh -l SITE1 auth
    Authenticated with cache file compute_cookie-SITE1
 
   これはキャシュファイルを用いているためです。
