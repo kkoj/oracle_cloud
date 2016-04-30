@@ -9,7 +9,7 @@ But It is useful for POC or understanding how to use Oracle Cloud Service.
   bash,python,curl are needed for this scripts.
 
   It works on Windows 10 Techpreview Linux (Ubuntu) environment.
-  It may useful using cygwin tools on Windows 7, 8.1
+  It may useful using the cygwin tools on Windows 7, 8.1
 
     cygwin https://www.cygwin.com/
     installer https://www.cygwin.com/setup-x86_64.exe
