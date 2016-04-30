@@ -4,6 +4,45 @@ There is some idea and solution for Oracle Cloud Service API and network.
 Just being ad-hook hack, it is not for sale and no warranty.
 But It is useful for POC or understanding how to use Oracle Cloud Service.
 
+0. Supported Environment
+
+  bash,python,curl are needed for this scripts.
+
+  It works on Windows 10 Techpreview Linux (Ubuntu) environment.
+  It may useful using cygwin tools on Windows 7, 8.1
+
+    cygwin https://www.cygwin.com/
+    installer https://www.cygwin.com/setup-x86_64.exe
+
+    You must choice 3 items on the category (Bin column) at "Select Package"
+    view on the installer.
+
+     Select Package 
+     ---------------
+     Net    curl
+     Python python
+     Devel  git
+
+     It will start with double click "Cygwin64 Terminal" icon on the Desktop.
+
+  Environment Settings
+
+  Input next lines,
+
+  $ git clone https://github.com/kkoj/oracle_cloud.git
+  $ mkdir bin
+  $ echo 'export PATH=$PATH:$HOME/oracle_cloud' >> .bash_profile
+　$ . .bash_profile
+  $ vi bin/CONFIG_FILE
+
+  It means,
+
+  - get git repository
+    Sometime you may need proxy settings.
+  - make "bin" directory to deploy config files.
+  - add oracle_cloud directory to PATH environment parameter.
+  - make CONFIG_FILE. Any file name is OK.
+
 1. make configuration file like this.
 
 CONFIG_FILE
