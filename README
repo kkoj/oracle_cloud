@@ -47,11 +47,13 @@ But It is useful for POC or understanding how to use Oracle Cloud Service.
 
 CONFIG_FILE
 -------------------------------
-IAAS_URL="https://api.compute.us0.oraclecloud.com"
+IAAS_URL="https://your.endpoint.oraclecloud.com"
 OPC_DOMAIN="your_domain"
 OPC_ACCOUNT="your_account"
 OPC_PASS="password"
 -------------------------------
+
+  Your IAAS_URL parameter is on Oracle Cloud Web console as Endpoint.
 
 2. set parameter in the scripts
 
