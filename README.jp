@@ -4,15 +4,56 @@ Oracle Cloud の API やネットワークを利用するためのアイデア�
 いかんせん急ごしらえのツールなので非売品かつ無保証です。
 それでもOracle CloudのPOCや使い方を理解するには便利だと思います。
 
+0.動作環境
+
+  bash,python,curlがある環境であれば動作するはずです。
+
+  Windows 10 Techpreview の Ubuntu 環境でも動作しました。
+  Windows 7, 8.1 の場合は cygwin が使いやすい環境です。
+
+  cygwin https://www.cygwin.com/
+  インストーラ https://www.cygwin.com/setup-x86_64.exe
+
+  パッケージ選択では次のカテゴリから少なくとも次の3つを追加します。
+  Bin列にチェックを入れます。
+
+     Select Package 
+     ---------------
+     Net    curl
+     Python python
+     Devel  git
+
+  Desktop にある Cygwin64 Terminal アイコンをダブルクリックすると動作します。
+
+  環境設定
+
+  次のコマンドを入力します。
+
+  $ git clone https://github.com/kkoj/oracle_cloud.git
+  $ mkdir bin
+  $ echo 'export PATH=$PATH:$HOME/oracle_cloud' >> .bash_profile
+　$ . .bash_profile
+  $ vi bin/CONFIG_FILE
+
+  それぞれ以下の意味があります。
+
+  - git リポジトリを取得します。
+    proxyの設定が必要な場合があります。
+  - config ファイルをおくディレクトリ"bin"を作ります。
+  - PATH に oracle_cloud を追加します。
+  - CONFIG_FILE を作ります。ファイル名は自由に付けられます。
+
 1. config ファイルをつくります
 
 CONFIG_FILE
 -------------------------------
-IAAS_URL="https://api.compute.us0.oraclecloud.com"
+IAAS_URL="https://your.endpoint.oraclecloud.com"
 OPC_DOMAIN="your_domain"
 OPC_ACCOUNT="your_account"
 OPC_PASS="password"
 -------------------------------
+
+  IAAS_URLはWEB GUIでOracle Cloudにログインして、Endpointを書き写します。
 
 2. スクリプトに直接パラメーターを定義します。
 
