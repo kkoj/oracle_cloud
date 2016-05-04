@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-04-30 23:38:50 katsu> 
+## Time-stamp: <2016-05-04 13:57:31 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -124,6 +124,7 @@ _get_cookie() {
 	STATUS="Authenticated"
     elif [ $STATUS = 401 ]; then
 	echo "Incorrect username or password"
+	exit 1
     else
 	echo "IAAS_URL on CONFIG_FILE could not be reached."
 	echo
@@ -194,11 +195,11 @@ instances_list() {
     if [ "$1" == list ]; then
     echo
     echo "          OBJECT list for the Domain $OPC_DOMAIN"
-    fi
     echo "============================================================="
     echo "                    ### INSTANCE ###"
     echo "============================================================="
     echo
+    fi
 
     # sed:1 pick up object "name"
     # sed:2 omit storage attachment uuid by "uniq"
@@ -230,18 +231,24 @@ instances_list() {
     NAME=$( echo ${INSTANCE_ID[$i]} \
 	| sed -e "s/\/Compute-$OPC_DOMAIN\/[^/]*\(.*\)/\1/" \
 	-e 's/^\///' )
+
+    if [ "$1" == list ]; then
     echo "USER:               $USER"
     echo "NAME:               $NAME"
     # show MAC address and private IP address
     echo "MAC ADDRESS:        ${MAC_ADDRESS[$i]}"
     echo "PRIVATE IP ADDRESS: ${PRIVATE_IP[$i]}"
+    fi
+
     # show global IP address
 
     if [ $BASH_VERSION = 4 ]; then
     # VCABLE_GIP is a global parameter gotten in ipassociation_list
     # get global IP address from VCABLE_GIP
+    if [ "$1" == list ]; then
     echo "GLOBAL IP ADDRESS:  ${VCABLE_GIP[${VCABLE_ID[$i]}]}"
     echo
+    fi
     # link vcable and global IP address
     GIP=${VCABLE_GIP[${VCABLE_ID[$i]}]}
     # set global IP address and HOST name into HOST_GIP
@@ -250,8 +257,10 @@ instances_list() {
     else
 	for ((m = 0 ; m < ${#VCABLE_INDEX[@]}; ++m )) do
 	if [ ${VCABLE_ID[$i]} = ${VCABLE_INDEX[$m]} ]; then
+	    if [ "$1" == list ]; then
 	    echo "GLOBAL IP ADDRESS:  ${GLOBAL_IP_INDEX[$m]}"
 	    echo
+	    fi
 	    HOST_INDEX[$m]=$NAME
 	    break
 	fi
@@ -277,10 +286,10 @@ ipassociation() {
 }
 
 ipassociation_list() {
-    IP_ASSOC=/tmp/ipassociation-$OPC_DOMAIN
-
     # ipassociation has information of vcable and global IP connection,
     # VCABLE and GLOBAL_IP
+
+    IP_ASSOC=/tmp/ipassociation-$OPC_DOMAIN
 
     # get user account name
 
@@ -314,11 +323,16 @@ ipassociation_list() {
 	$IP_ASSOC-${USER[$i]}))
 
     # set global IP address into VCABLE_GIP
+    # "${#GLOBAL_IP[@]}" is total number of GLOBAL_IP 
     if [ $BASH_VERSION = 4 ]; then
+	# bash ver.4
+	# GLOBAL_IP[j] link with VCABLE[j] on associative array
 	for ((j = 0 ; j < ${#GLOBAL_IP[@]}; ++j )) do
 	VCABLE_GIP[${VCABLE[$j]}]=${GLOBAL_IP[$j]}
 	done
     else
+	# bash ver.3
+	# make VCABLE_INDEX[j] and GLOBAL_IP_INDEX[j]
 	for ((j = 0 ; j < ${#GLOBAL_IP[@]}; ++j )) do
 	VCABLE_INDEX[${#VCABLE_INDEX[@]}]=${VCABLE[$j]}
 	GLOBAL_IP_INDEX[${#GLOBAL_IP_INDEX[@]}]=${GLOBAL_IP[$j]}
@@ -337,6 +351,10 @@ ipreservation() {
 }
 
 ipreservation_list() {
+    # ipreservation has reserved global IP address and ipreservation id (uuid).
+    # We have to link host id to ipreservation id with ipassociation_list().
+    # Some time ipreservation id has no linkage with any host id.
+
     IP_RESERV=/tmp/ipreservation-$OPC_DOMAIN
     # get account name which use global IP address
     # using "Accept: application/oracle-compute-v3+directory+json",
@@ -392,7 +410,7 @@ ipreservation_list() {
     echo "-------------------------------------------------------------"
     done
     
-#    rm $IP_RESERV
+    rm $IP_RESERV
 }
 
 ipreservation_create() {
@@ -486,6 +504,25 @@ machineimage_info(){
 	 -H "Cookie: $COMPUTE_COOKIE" \
         $IAAS_URL/machineimage/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
     echo
+}
+
+orchestrations(){
+O_FILE=/tmp/orchestration-$OPC_DOMAIN
+#    $CURL -X GET \
+#	-H "Accept: application/oracle-compute-v3+directory+json"\
+#	-H "Cookie: $COMPUTE_COOKIE" \
+#        $IAAS_URL/orchestration/Compute-$OPC_DOMAIN/ | $JQ
+
+    $CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/orchestration/Compute-$OPC_DOMAIN/ \
+	| $JQ | tee $O_FILE \
+	| sed -n -e 's/.*\"name\": \"\/[^/]*\/\([^/]*\/[^/]*\/[^/\]*\).*/\1/p'\
+        | uniq
+
+#	| sed -e "s/\/Compute-$OPC_DOMAIN\/[^/]*\(.*\)/\1/" \
+
 }
 
 role() {
@@ -725,6 +762,8 @@ case $1 in
 	;;
     ipreservation-list)
 	get_cookie
+	ipassociation_list
+	instances_list
 	ipreservation_list
 	;;
     ipreservation-delete)
@@ -765,6 +804,10 @@ case $1 in
     machineimage)
 	get_cookie
 	machineimage
+	;;
+    orchestrations)
+	get_cookie
+	orchestrations
 	;;
     role)
 	get_cookie
@@ -841,10 +884,6 @@ case $1 in
 	get_cookie
 	secrule_make_default_ssh
 	;;
-    ipassociation-list)
-    get_cookie
-    ipassociation_list
-    ;;
     *)
 	cat <<-EOF
 	Usage: opc_compute.sh -l "CONF_FILE" { auth | show | shape | ... } 
