@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-04 13:57:31 katsu> 
+## Time-stamp: <2016-05-04 15:42:46 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -147,6 +147,41 @@ account() {
 	  $IAAS_URL/account/Compute-$OPC_DOMAIN/ | $JQ
 }
 
+delete(){
+    echo "Which object do you want to delete ?"
+    echo
+    echo "   1: global IP address"
+    echo "   2: storage volume"
+    echo "   3: instance"
+    echo "   4: everything"
+    echo -n "choice 1,2,3: "
+    read ans
+    case $ans in
+	1)
+	    echo "global address that is not used"
+	    ;;
+	2)
+	    echo "storage volume that is not used"
+	    ;;
+	3)
+	    echo "instance"
+	    ;;
+	4)
+	    echo "Do you want to delete everything on $OPC_DOMAIN site?"
+	    echo -n "If yes, type DELETE: "
+	    read ans
+	    if [ $ans == DELETE ]; then
+		echo delete all
+	    else
+		exit 1
+	    fi
+	    ;;
+	*)
+	    exit 1
+	    ;;
+    esac
+}
+
 imagelist_info() {
 
     IMAGELIST=/tmp/imagelist-$OPC_DOMAIN
@@ -193,12 +228,12 @@ instances() {
 instances_list() {
     INSTANCE=/tmp/instance-$OPC_DOMAIN
     if [ "$1" == list ]; then
-    echo
-    echo "          OBJECT list for the Domain $OPC_DOMAIN"
-    echo "============================================================="
-    echo "                    ### INSTANCE ###"
-    echo "============================================================="
-    echo
+	echo
+	echo "          OBJECT list for the Domain $OPC_DOMAIN"
+	echo "============================================================="
+	echo "                    ### INSTANCE ###"
+	echo "============================================================="
+	echo
     fi
 
     # sed:1 pick up object "name"
@@ -233,33 +268,33 @@ instances_list() {
 	-e 's/^\///' )
 
     if [ "$1" == list ]; then
-    echo "USER:               $USER"
-    echo "NAME:               $NAME"
-    # show MAC address and private IP address
-    echo "MAC ADDRESS:        ${MAC_ADDRESS[$i]}"
-    echo "PRIVATE IP ADDRESS: ${PRIVATE_IP[$i]}"
+	echo "USER:               $USER"
+	echo "NAME:               $NAME"
+	# show MAC address and private IP address
+	echo "MAC ADDRESS:        ${MAC_ADDRESS[$i]}"
+	echo "PRIVATE IP ADDRESS: ${PRIVATE_IP[$i]}"
     fi
 
     # show global IP address
 
     if [ $BASH_VERSION = 4 ]; then
-    # VCABLE_GIP is a global parameter gotten in ipassociation_list
-    # get global IP address from VCABLE_GIP
-    if [ "$1" == list ]; then
-    echo "GLOBAL IP ADDRESS:  ${VCABLE_GIP[${VCABLE_ID[$i]}]}"
-    echo
-    fi
-    # link vcable and global IP address
-    GIP=${VCABLE_GIP[${VCABLE_ID[$i]}]}
-    # set global IP address and HOST name into HOST_GIP
-    # to use ipreservation_list
-    GIP_HOST[$GIP]=$NAME
+	# VCABLE_GIP is a global parameter gotten in ipassociation_list
+	# get global IP address from VCABLE_GIP
+	if [ "$1" == list ]; then
+	    echo "GLOBAL IP ADDRESS:  ${VCABLE_GIP[${VCABLE_ID[$i]}]}"
+	    echo
+	fi
+	# link vcable and global IP address
+	GIP=${VCABLE_GIP[${VCABLE_ID[$i]}]}
+	# set global IP address and HOST name into HOST_GIP
+	# to use ipreservation_list
+	GIP_HOST[$GIP]=$NAME
     else
 	for ((m = 0 ; m < ${#VCABLE_INDEX[@]}; ++m )) do
 	if [ ${VCABLE_ID[$i]} = ${VCABLE_INDEX[$m]} ]; then
 	    if [ "$1" == list ]; then
-	    echo "GLOBAL IP ADDRESS:  ${GLOBAL_IP_INDEX[$m]}"
-	    echo
+		echo "GLOBAL IP ADDRESS:  ${GLOBAL_IP_INDEX[$m]}"
+		echo
 	    fi
 	    HOST_INDEX[$m]=$NAME
 	    break
@@ -267,8 +302,7 @@ instances_list() {
 	done
     fi
     done
-
- rm $INSTANCE
+    rm $INSTANCE
 }
 
 instance_delete() {
@@ -507,7 +541,7 @@ machineimage_info(){
 }
 
 orchestrations(){
-O_FILE=/tmp/orchestration-$OPC_DOMAIN
+    O_FILE=/tmp/orchestration-$OPC_DOMAIN
 #    $CURL -X GET \
 #	-H "Accept: application/oracle-compute-v3+directory+json"\
 #	-H "Cookie: $COMPUTE_COOKIE" \
@@ -520,9 +554,6 @@ O_FILE=/tmp/orchestration-$OPC_DOMAIN
 	| $JQ | tee $O_FILE \
 	| sed -n -e 's/.*\"name\": \"\/[^/]*\/\([^/]*\/[^/]*\/[^/\]*\).*/\1/p'\
         | uniq
-
-#	| sed -e "s/\/Compute-$OPC_DOMAIN\/[^/]*\(.*\)/\1/" \
-
 }
 
 role() {
@@ -736,6 +767,9 @@ case $1 in
 	get_cookie
 	echo $STATUS
 	;;
+    delete)
+	delete
+	;;
     imagelist)
 	get_cookie
 	imagelist_info
@@ -840,7 +874,7 @@ case $1 in
     show)
 	get_cookie
 	ipassociation_list
-	instances_list
+	instances_list list
 	;;
     show-network)
 	get_cookie
