@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-04 15:42:46 katsu> 
+## Time-stamp: <2016-05-05 04:43:28 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -27,15 +27,16 @@ ADJ_TIME=9000
 BASH_VERSION=$(LANG=C bash --version \
     |sed -n -e 's/GNU bash, version \([0-9]\).*/\1/p')
 if [ $BASH_VERSION -ge 4 ]; then
-# VCABLE_GIP is vcable and Global IP address
-# GIP_HOST is Global IP address and host
-    declare -A VCABLE_GIP
-    declare -A GIP_HOST
+    declare -A VCABLE_GIP         # vcable and Global IP address
+    declare -A GIP_HOST           # Global IP address and host
 else
-    declare -a HOST_INDEX
-    declare -a VCABLE_INDEX
-    declare -a GLOBAL_IP_INDEX
+    declare -a HOST_INDEX         # host name(uuid) in instance
+    declare -a VCABLE_INDEX       # instace and ipassciation has it.
+    declare -a GLOBAL_IP_INDEX    # ipassciation and ipreservation has it.
 fi
+declare -a USER_ID                # account name
+declare -a NO_USE_GLOBAL_IP_INDEX # ip address only on ipreservation
+
 ##
 ## parameter parse ##
 ##
@@ -154,30 +155,104 @@ delete(){
     echo "   2: storage volume"
     echo "   3: instance"
     echo "   4: everything"
-    echo -n "choice 1,2,3: "
+    echo
+    echo -n "Choose 1,2,3,4: "
     read ans
     case $ans in
 	1)
+	    # delete global IP address reservation
+	    get_cookie
+	    ipassociation_list
+	    instances_list
+	    ipreservation_list
+	    echo
 	    echo "global address that is not used"
+	    echo "--------------------------------"
+	    echo "Do you want to delete these addresses?"
+	    echo -n "(1:Yes/2:Only $OPC_ACCOUNT's/3:No): "
+	    read ans2
+	    case $ans2 in
+		1 | [Yy]* | "")
+		    # ipreservation_delete
+		    echo yes
+		    ;;
+		2 | [Oo]* )
+		    echo only
+		    ;;
+		*)
+		    exit 1
+		    ;;
+	    esac
 	    ;;
 	2)
+	    # delete Storage Volume
+	    get_cookie
+	    storage_volume_list
+	    echo
 	    echo "storage volume that is not used"
+	    echo "----------------"
+	    echo "Do you want to delete these storage volume?"
+	    echo -n "(1:Yes/2:Only $OPC_ACCOUNT's/3:No): "
+	    read ans2
+	    case $ans2 in
+		1 | [Yy]* | "")
+		    echo yes
+		    echo "Not yet implemented"
+		    ;;
+		2 | [Oo]* )
+		    echo only
+		    echo "Not yet implemented"
+		    ;;
+		*)
+		    exit 1
+		    ;;
+	    esac
 	    ;;
 	3)
-	    echo "instance"
+	    # delete Instances
+	    get_cookie
+	    instances_list
+	    echo
+	    echo "----------------"
+	    echo "Do you want to delete these instance?"
+	    echo -n "(1:Yes/2:Only $OPC_ACCOUNT's/3:No): "
+	    read ans2
+	    case $ans2 in
+		1 | [Yy]* | "")
+		    echo yes
+		    echo "Not yet implemented"
+		    ;;
+		2 | [Oo]* )
+		    echo only
+		    echo "Not yet implemented"
+		    ;;
+		*)
+		    exit 1
+		    ;;
+	    esac
 	    ;;
 	4)
+	    # delete Everything
+	    get_cookie
+	    instances_list	    
+	    echo
 	    echo "Do you want to delete everything on $OPC_DOMAIN site?"
 	    echo -n "If yes, type DELETE: "
-	    read ans
-	    if [ $ans == DELETE ]; then
-		echo delete all
-	    else
-		exit 1
-	    fi
-	    ;;
-	*)
-	    exit 1
+	    echo -n "(1:Yes/2:Only $OPC_ACCOUNT's/3:No): "
+	    read ans2
+	    case $ans2 in
+		1 | [Yy]* | "")
+		    echo yes
+		    echo "Not yet implemented"
+		    ;;
+		2 | [Oo]* )
+		    echo only
+		    echo "Not yet implemented"
+		    ;;
+		*)
+		    exit 1
+		    ;;
+	    esac
 	    ;;
     esac
 }
@@ -226,6 +301,7 @@ instances() {
 }
 
 instances_list() {
+
     INSTANCE=/tmp/instance-$OPC_DOMAIN
     if [ "$1" == list ]; then
 	echo
@@ -258,18 +334,22 @@ instances_list() {
     VCABLE_ID=($(sed -n -e 's/.*\"vcable_id\".*\/.*\/.*\/\(.*\)\",/\1/p' \
 	$INSTANCE ))
 
+    # Now INSTANCE_ID,MAC_ADDRESS,PRIVATE_IP,VCABLE_ID has same index as row.
+    # Because they are in same block in $INSTACE file.
+    # Next "for loop" use $i to pick up the factor.
+
     # show information
     # show account name and host name
     for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i )) do
     USER=$( echo ${INSTANCE_ID[$i]} \
 	| sed -e "s/\/Compute-$OPC_DOMAIN\/\([^/]*\).*/\1/" )
-    NAME=$( echo ${INSTANCE_ID[$i]} \
+    HOST_ID=$( echo ${INSTANCE_ID[$i]} \
 	| sed -e "s/\/Compute-$OPC_DOMAIN\/[^/]*\(.*\)/\1/" \
 	-e 's/^\///' )
 
     if [ "$1" == list ]; then
-	echo "USER:               $USER"
-	echo "NAME:               $NAME"
+	echo "USER:               $USER_ID"
+	echo "NAME:               $HOST_ID"
 	# show MAC address and private IP address
 	echo "MAC ADDRESS:        ${MAC_ADDRESS[$i]}"
 	echo "PRIVATE IP ADDRESS: ${PRIVATE_IP[$i]}"
@@ -278,6 +358,7 @@ instances_list() {
     # show global IP address
 
     if [ $BASH_VERSION = 4 ]; then
+	# bash ver.4
 	# VCABLE_GIP is a global parameter gotten in ipassociation_list
 	# get global IP address from VCABLE_GIP
 	if [ "$1" == list ]; then
@@ -288,15 +369,16 @@ instances_list() {
 	GIP=${VCABLE_GIP[${VCABLE_ID[$i]}]}
 	# set global IP address and HOST name into HOST_GIP
 	# to use ipreservation_list
-	GIP_HOST[$GIP]=$NAME
+	GIP_HOST[$GIP]=$HOST_ID
     else
+	# bash ver.3
 	for ((m = 0 ; m < ${#VCABLE_INDEX[@]}; ++m )) do
 	if [ ${VCABLE_ID[$i]} = ${VCABLE_INDEX[$m]} ]; then
 	    if [ "$1" == list ]; then
 		echo "GLOBAL IP ADDRESS:  ${GLOBAL_IP_INDEX[$m]}"
 		echo
 	    fi
-	    HOST_INDEX[$m]=$NAME
+	    HOST_INDEX[$m]=$HOST_ID
 	    break
 	fi
 	done
@@ -320,59 +402,61 @@ ipassociation() {
 }
 
 ipassociation_list() {
-    # ipassociation has information of vcable and global IP connection,
-    # VCABLE and GLOBAL_IP
+    # instance: "vcable_id(uuid)"
+    # ipassociation: "name"(uuid),"reservation"(uuid),"vcable"(uuid)
+    # ipreservation: "name"(uuid),"ip"(uuid)
 
     IP_ASSOC=/tmp/ipassociation-$OPC_DOMAIN
 
     # get user account name
 
-    USER=($($CURL -X GET \
-	-H "Accept: application/oracle-compute-v3+directory+json"\
-	-H "Cookie: $COMPUTE_COOKIE" \
-	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/ | $JQ \
-	| sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p'))
-
+    if [ -z ${USER_ID[1]} ];then
+	USER_ID=($($CURL -X GET \
+	    -H "Accept: application/oracle-compute-v3+directory+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    $IAAS_URL/ip/association/Compute-$OPC_DOMAIN/ | $JQ \
+	    | sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p'))
+    fi
     # get the object from all users account
-    # objects into $USER[$i]/$OBJECT[$j]
+    # objects into $USER_ID[$i]/$OBJECT[$j]
     # $OBJECT is array of ipassociation name and ip address 
 
-    # get all USER's information from IP_ASSOC
+    # get all USER_ID's information from IP_ASSOC
 
-    for ((i = 0 ; i < ${#USER[@]};++i )) do
+    for ((m = 0 ; m < ${#USER_ID[@]};++m )) do
+    echo checking ${USER_ID[$m]},
 
-    echo checking ${USER[$i]},
     # get global IP address
 
     GLOBAL_IP=($($CURL -X GET \
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
-	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/${USER[$i]}/ \
-	| $JQ | tee $IP_ASSOC-${USER[$i]} \
+	$IAAS_URL/ip/association/Compute-$OPC_DOMAIN/${USER_ID[$m]}/ \
+	| $JQ | tee $IP_ASSOC-${USER_ID[$m]} \
 	| sed -n -e 's/.*\"ip\": \"\(.*\)\",/\1/p' ))
 
-    # get vcable_id
+    # get vcable uuid
 
     VCABLE=($(sed -n -e 's/.*\"vcable\": \"\/.*\/.*\/\(.*\)\"/\1/p' \
-	$IP_ASSOC-${USER[$i]}))
+	$IP_ASSOC-${USER_ID[$m]}))
 
     # set global IP address into VCABLE_GIP
     # "${#GLOBAL_IP[@]}" is total number of GLOBAL_IP 
     if [ $BASH_VERSION = 4 ]; then
 	# bash ver.4
 	# GLOBAL_IP[j] link with VCABLE[j] on associative array
-	for ((j = 0 ; j < ${#GLOBAL_IP[@]}; ++j )) do
-	VCABLE_GIP[${VCABLE[$j]}]=${GLOBAL_IP[$j]}
+	for ((n = 0 ; n < ${#GLOBAL_IP[@]}; ++n )) do
+	VCABLE_GIP[${VCABLE[$n]}]=${GLOBAL_IP[$n]}
 	done
     else
 	# bash ver.3
-	# make VCABLE_INDEX[j] and GLOBAL_IP_INDEX[j]
-	for ((j = 0 ; j < ${#GLOBAL_IP[@]}; ++j )) do
-	VCABLE_INDEX[${#VCABLE_INDEX[@]}]=${VCABLE[$j]}
-	GLOBAL_IP_INDEX[${#GLOBAL_IP_INDEX[@]}]=${GLOBAL_IP[$j]}
+	# make VCABLE_INDEX[j] and GLOBAL_IP_INDEX[j] in same index row
+	for ((n = 0 ; n < ${#GLOBAL_IP[@]}; ++n )) do
+	VCABLE_INDEX[${#VCABLE_INDEX[@]}]=${VCABLE[$n]}
+	GLOBAL_IP_INDEX[${#GLOBAL_IP_INDEX[@]}]=${GLOBAL_IP[$n]}
 	done
     fi
-    rm $IP_ASSOC-${USER[$i]}		    
+    rm $IP_ASSOC-${USER_ID[$m]}
     done
 }
 
@@ -382,69 +466,6 @@ ipreservation() {
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
-}
-
-ipreservation_list() {
-    # ipreservation has reserved global IP address and ipreservation id (uuid).
-    # We have to link host id to ipreservation id with ipassociation_list().
-    # Some time ipreservation id has no linkage with any host id.
-
-    IP_RESERV=/tmp/ipreservation-$OPC_DOMAIN
-    # get account name which use global IP address
-    # using "Accept: application/oracle-compute-v3+directory+json",
-    # we could get not only $OPC_ACCOUNT but another account name.
-    # And ipreservation objects are only being showed on owner account's
-    # sub object with "Accept: application/oracle-compute-v3+json".
-    # That is why tring to get USER first and to get each sub objects.
-
-    # get user account name
-    USER=($($CURL -X GET \
-	-H "Accept: application/oracle-compute-v3+directory+json"\
-	-H "Cookie: $COMPUTE_COOKIE" \
-	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/ | $JQ \
-	| sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p' ))
-
-    # get the object from all users account
-    # objects into $USER[$i]/$OBJECT[$j]
-
-    echo
-    echo "============================================================="
-    echo "         ### GLOBAL IP ADDRESS (IP RESERVATION) ###"
-    echo "============================================================="
-    for ((i = 0 ; i < ${#USER[@]};++i )) do
-    echo
-    # show ACCOUNT name
-    echo "USER: ${USER[$i]}"
-    GLOBAL_IP=($($CURL -X GET \
-        -H "Accept: application/oracle-compute-v3+json" \
-	-H "Cookie: $COMPUTE_COOKIE" \
-	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/${USER[$i]}/ \
-	| $JQ | tee $IP_RESERV \
-	| sed -n -e 's/.*\"ip\": \"\(.*\)\",/\1/p' ))
-    echo "-------------------------------------------------------------"
-    echo -e "IP ADDRESS\tHOST UUID"
-
-    if [ $BASH_VERSION = 4 ]; then
-	# show Global IP Address with GIP_HOST from instance_list
-	for ((j = 0 ; j < ${#GLOBAL_IP[@]}; ++j )) do
-	echo -e "${GLOBAL_IP[$j]}\t${GIP_HOST[${GLOBAL_IP[$j]}]}"
-	done
-    else
-	for ((m = 0 ; m < ${#GLOBAL_IP[@]}; ++m )) do
-	for ((n = 0 ; n < ${#GLOBAL_IP_INDEX[@]}; ++n )) do
-	if [ ${GLOBAL_IP[$m]} = ${GLOBAL_IP_INDEX[$n]} ]; then
-	    echo -e "${GLOBAL_IP_INDEX[$n]}\t${HOST_INDEX[$n]}"
-	    break
-	elif [ $n = $((${#GLOBAL_IP_INDEX[@]} - 1)) ]; then
-	    echo -e "${GLOBAL_IP[$m]}"
-	fi
-	done
-	done
-    fi
-    echo "-------------------------------------------------------------"
-    done
-    
-    rm $IP_RESERV
 }
 
 ipreservation_create() {
@@ -459,11 +480,105 @@ ipreservation_create() {
 }
 
 ipreservation_delete() {
-    echo "What is the name of ipreservation to delete ?"
-    read ans
-    $CURL -X DELETE -H "Content-Type: application/oracle-compute-v3+json" \
+    if [ "$1" = "" ]; then
+	echo "What is the name of ipreservation to delete ?"
+	read ans
+	$CURL -X DELETE \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
+    else
+	$CURL -X DELETE \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$1
+    fi
+}
+
+ipreservation_list() {
+    # instance: "vcable_id(uuid)"
+    # ipassociation: "name"(uuid),"reservation"(uuid),"vcable"(uuid)
+    # ipreservation: "name"(uuid),"ip"(uuid)
+
+    # We have to link host id to ipreservation id
+    # with ipassociation_list().
+    # Some time ipreservation id has no linkage with any host id.
+
+    IP_RESERV=/tmp/ipreservation-$OPC_DOMAIN
+
+    # get account name which use global IP address
+    # using "Accept: application/oracle-compute-v3+directory+json",
+    # we could get not only $OPC_ACCOUNT but another account name.
+    # And ipreservation objects are only being showed on owner account's
+    # sub object with "Accept: application/oracle-compute-v3+json".
+    # That is why trying to get USER_ID first and to get each sub objects.
+
+    # get user account name
+    if [ -z ${USER_ID[1]} ];then
+	USER_ID=($($CURL -X GET \
+	    -H "Accept: application/oracle-compute-v3+directory+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/ | $JQ \
+	    | sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p' ))
+    fi
+    # get the object from all users account
+    # objects into $USER_ID[$i]/$OBJECT[$j]
+
+    echo
+    echo "============================================================="
+    echo "         ### GLOBAL IP ADDRESS (IP RESERVATION) ###"
+    echo "============================================================="
+    for ((m = 0 ; m < ${#USER_ID[@]};++m )) do
+    echo
+    # show ACCOUNT name
+    echo "USER_ID: ${USER_ID[$m]}"
+    GLOBAL_IP=($($CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
-	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
+	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/${USER_ID[$m]}/ \
+	| $JQ | tee $IP_RESERV-${USER_ID[$m]} \
+	| sed -n -e 's/.*\"ip\": \"\(.*\)\",/\1/p' ))
+    RESERVE_NAME=($(sed -n \
+	-e "s/.*\"name\": \"\/Compute-$OPC_DOMAIN\/\(.*\)\",/\1/p" \
+	$IP_RESERV-${USER_ID[$m]} ))
+
+    echo "-------------------------------------------------------------"
+    echo -e "IP ADDRESS\tHOST UUID"
+
+    if [ $BASH_VERSION = 4 ]; then
+	# bash ver.4
+	# show Global IP Address with GIP_HOST from instance_list
+	for ((i = 0 ; i < ${#GLOBAL_IP[@]}; ++i )) do
+	echo -e "${GLOBAL_IP[$i]}\t${GIP_HOST[${GLOBAL_IP[$i]}]}"
+
+	if [ "${GIP_HOST[${GLOBAL_IP[$i]}]}" = "" ]; then
+	    # pickup no use IP address using in delete()
+	    GIP="${RESERVE_NAME[$i]}"
+	    NO_USE_GLOBAL_IP_INDEX[${#NO_USE_GLOBAL_IP_INDEX[@]}]=$GIP
+	    echo GIP $GIP
+	fi
+	done
+    else
+	# bash ver.3
+	for ((i = 0 ; i < ${#GLOBAL_IP[@]}; ++i )) do
+	for ((j = 0 ; j < ${#GLOBAL_IP_INDEX[@]}; ++j )) do
+	if [ ${GLOBAL_IP[$i]} = ${GLOBAL_IP_INDEX[$j]} ]; then
+	    echo -e "${GLOBAL_IP_INDEX[$j]}\t${HOST_INDEX[$j]}"
+	    break
+	    # it must be remaining of global IP address without HOST
+	elif [ $j = $((${#GLOBAL_IP_INDEX[@]} - 1)) ]; then
+	    echo -e "${GLOBAL_IP[$i]}"
+	    # pickup no use IP address using in delete()
+	    GIP="${RESERVE_NAME[$i]}"
+	    NO_USE_GLOBAL_IP_INDEX[${#NO_USE_GLOBAL_IP_INDEX[@]}]=$GIP
+	    echo GIP $GIP
+	fi
+	done
+	done
+    fi
+    echo "-------------------------------------------------------------"
+    rm $IP_RESERV-${USER_ID[$m]}    
+    done
 }
 
 launchplan() {
