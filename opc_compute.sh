@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-05 04:43:28 katsu> 
+## Time-stamp: <2016-05-05 12:44:27 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -27,15 +27,16 @@ ADJ_TIME=9000
 BASH_VERSION=$(LANG=C bash --version \
     |sed -n -e 's/GNU bash, version \([0-9]\).*/\1/p')
 if [ $BASH_VERSION -ge 4 ]; then
-    declare -A VCABLE_GIP         # vcable and Global IP address
-    declare -A GIP_HOST           # Global IP address and host
+    declare -A VCABLE_GIP       # vcable and Global IP address
+    declare -A GIP_HOST         # Global IP address and host
 else
-    declare -a HOST_INDEX         # host name(uuid) in instance
-    declare -a VCABLE_INDEX       # instace and ipassciation has it.
-    declare -a GLOBAL_IP_INDEX    # ipassciation and ipreservation has it.
+    declare -a HOST_INDEX       # host name(uuid) in instance
+    declare -a VCABLE_INDEX     # instance and ipassociation has it.
+    declare -a GLOBAL_IP_INDEX  # ipassociation and ipreservation has it.
 fi
-declare -a USER_ID                # account name
-declare -a NO_USE_GLOBAL_IP_INDEX # ip address only on ipreservation
+declare -a USER_ID              # account name
+declare -a UNUSED_GIP_NAME      # unused IP address name on ipreservation
+declare -a UNUSED_GLOBAL_IP     # unused IP address on ipreservation
 
 ##
 ## parameter parse ##
@@ -121,9 +122,9 @@ _get_cookie() {
 
     STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
 
-    if [ $STATUS = 204 ]; then
+    if [ "$STATUS" = 204 ]; then
 	STATUS="Authenticated"
-    elif [ $STATUS = 401 ]; then
+    elif [ "$STATUS" = 401 ]; then
 	echo "Incorrect username or password"
 	exit 1
     else
@@ -165,19 +166,37 @@ delete(){
 	    ipassociation_list
 	    instances_list
 	    ipreservation_list
+	    if [ -z ${UNUSED_GLOBAL_IP[1]} ]; then
+		echo
+		echo "There is no unused global IP address."
+		echo
+		exit 1
+	    fi
 	    echo
 	    echo "global address that is not used"
-	    echo "--------------------------------"
+	    echo "----------------------------------"
+	    echo -e "IP ADDRESS\tUNUSED OBJECT NAME"
+	    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[$i]};++i )) do
+	    echo -e "${UNUSED_GLOBAL_IP[$i]}\t${UNUSED_GIP_NAME[$i]}"
+	    done
+	    echo "----------------------------------"
 	    echo "Do you want to delete these addresses?"
-	    echo -n "(1:Yes/2:Only $OPC_ACCOUNT's/3:No): "
+	    echo -n "(1:Yes / 2:Only $OPC_ACCOUNT's / 3:No): "
 	    read ans2
 	    case $ans2 in
 		1 | [Yy]* | "")
-		    # ipreservation_delete
-		    echo yes
+		    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[$i]};++i )) do
+		    ipreservation_delete ${UNUSED_GIP_NAME[$i]}
+		    done
 		    ;;
 		2 | [Oo]* )
-		    echo only
+		    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[$i]};++i )) do
+		    USER=$(echo ${UNUSED_GIP_NAME[$i]} \
+			| sed -n -e 's/\([^/]*\)\/.*/\1/p')
+		    if [ "$USER" = "$OPC_ACCOUNT" ]; then
+		    ipreservation_delete ${UNUSED_GIP_NAME[$i]}
+		    fi
+		    done
 		    ;;
 		*)
 		    exit 1
@@ -335,7 +354,7 @@ instances_list() {
 	$INSTANCE ))
 
     # Now INSTANCE_ID,MAC_ADDRESS,PRIVATE_IP,VCABLE_ID has same index as row.
-    # Because they are in same block in $INSTACE file.
+    # Because they are in same block in $INSTANCE file.
     # Next "for loop" use $i to pick up the factor.
 
     # show information
@@ -469,29 +488,57 @@ ipreservation() {
 }
 
 ipreservation_create() {
-    HOST_NAME=$1
-    $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
-	-H "Cookie: $COMPUTE_COOKIE" \
-	-d "{\"parentpool\":\"/oracle/public/ippool\", \
+    if [ "$1" = "" ]; then
+	echo "What is the name of ipreservation to create ?"
+	read ans
+	RET=$($CURL -X POST \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -d "{\"parentpool\":\"/oracle/public/ippool\", \
              \"account\":\"/Compute-$OPC_DOMAIN/default\",\
              \"permanent\": true, \
-             \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$HOST_NAME\"}"\
-	$IAAS_URL/ip/reservation/
+             \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans\"}"\
+	$IAAS_URL/ip/reservation/ )
+    else
+	RET=$($CURL -X POST \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -d "{\"parentpool\":\"/oracle/public/ippool\", \
+             \"account\":\"/Compute-$OPC_DOMAIN/default\",\
+             \"permanent\": true, \
+             \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$1\"}"\
+	$IAAS_URL/ip/reservation/ )
+    fi
+    STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
+    if [ "$STATUS" = 200 ]; then
+	echo "$1 created"
+    else
+	echo $RET | $JQ
+    fi
 }
 
 ipreservation_delete() {
     if [ "$1" = "" ]; then
 	echo "What is the name of ipreservation to delete ?"
 	read ans
-	$CURL -X DELETE \
+	RET=$($CURL -X DELETE \
 	    -H "Content-Type: application/oracle-compute-v3+json" \
 	    -H "Cookie: $COMPUTE_COOKIE" \
-	    $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
+	    $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans)
     else
-	$CURL -X DELETE \
+	RET=$($CURL -X DELETE \
 	    -H "Content-Type: application/oracle-compute-v3+json" \
 	    -H "Cookie: $COMPUTE_COOKIE" \
-	    $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$1
+	    $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$1)
+    fi
+
+    STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
+
+    # If successful, "HTTP/1.1 204 No Content" is returned.
+    if [ "$STATUS" = 204 ]; then
+	echo "$1 deleted"
+    else
+	echo $RET
     fi
 }
 
@@ -514,13 +561,13 @@ ipreservation_list() {
     # That is why trying to get USER_ID first and to get each sub objects.
 
     # get user account name
-    if [ -z ${USER_ID[1]} ];then
-	USER_ID=($($CURL -X GET \
-	    -H "Accept: application/oracle-compute-v3+directory+json" \
-	    -H "Cookie: $COMPUTE_COOKIE" \
-	    $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/ | $JQ \
-	    | sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p' ))
-    fi
+
+    USER_ID=($($CURL -X GET \
+	-H "Accept: application/oracle-compute-v3+directory+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/ | $JQ \
+	| sed -n -e 's/.*\/Compute-.*\/\(.*\)\/.*/\1/p' ))
+
     # get the object from all users account
     # objects into $USER_ID[$i]/$OBJECT[$j]
 
@@ -544,7 +591,6 @@ ipreservation_list() {
 
     echo "-------------------------------------------------------------"
     echo -e "IP ADDRESS\tHOST UUID"
-
     if [ $BASH_VERSION = 4 ]; then
 	# bash ver.4
 	# show Global IP Address with GIP_HOST from instance_list
@@ -553,9 +599,10 @@ ipreservation_list() {
 
 	if [ "${GIP_HOST[${GLOBAL_IP[$i]}]}" = "" ]; then
 	    # pickup no use IP address using in delete()
-	    GIP="${RESERVE_NAME[$i]}"
-	    NO_USE_GLOBAL_IP_INDEX[${#NO_USE_GLOBAL_IP_INDEX[@]}]=$GIP
-	    echo GIP $GIP
+	    GIP="${GLOBAL_IP[$i]}"
+	    GIP_NAME="${RESERVE_NAME[$i]}"
+	    UNUSED_GLOBAL_IP[${#UNUSED_GLOBAL_IP[@]}]=$GIP
+	    UNUSED_GIP_NAME[${#UNUSED_GIP_NAME[@]}]=$GIP_NAME
 	fi
 	done
     else
@@ -569,9 +616,10 @@ ipreservation_list() {
 	elif [ $j = $((${#GLOBAL_IP_INDEX[@]} - 1)) ]; then
 	    echo -e "${GLOBAL_IP[$i]}"
 	    # pickup no use IP address using in delete()
-	    GIP="${RESERVE_NAME[$i]}"
-	    NO_USE_GLOBAL_IP_INDEX[${#NO_USE_GLOBAL_IP_INDEX[@]}]=$GIP
-	    echo GIP $GIP
+	    GIP="${GLOBAL_IP[$i]}"
+	    GIP_NAME="${RESERVE_NAME[$i]}"
+	    UNUSED_GLOBAL_IP[${#UNUSED_GLOBAL_IP[@]}]=$GIP
+	    UNUSED_GIP_NAME[${#UNUSED_GIP_NAME[@]}]=$GIP_NAME
 	fi
 	done
 	done
@@ -608,7 +656,7 @@ launchplan() {
 
     STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
 
-    if [ $STATUS = 201 ]; then
+    if [ "$STATUS" = 201 ]; then
 	echo "$HOST_NAME created"
     else
 	echo $RET
@@ -750,7 +798,7 @@ secrule_create() {
 	 $IAAS_URL/secrule/ )
     STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
 
-    if [ $STATUS = 200 ]; then
+    if [ "$STATUS" = 200 ]; then
 	echo "secrule created"
     else
 	echo $RET
@@ -764,7 +812,7 @@ secrule_make_default_ssh() {
 	$IAAS_URL/secrule/Compute-$OPC_DOMAIN/DefaultPublicSSHAccess )
     STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
 
-    if [ $STATUS = 200 ]; then
+    if [ "$STATUS" = 200 ]; then
 	echo "DefaultPublicSSHAccess"
 	secrule_create
     else
@@ -914,6 +962,10 @@ case $1 in
 	ipassociation_list
 	instances_list
 	ipreservation_list
+	;;
+    ipreservation-create)
+	get_cookie
+	ipreservation_create
 	;;
     ipreservation-delete)
 	get_cookie
