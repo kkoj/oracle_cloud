@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-05 12:58:28 katsu> 
+## Time-stamp: <2016-05-05 13:15:20 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -494,6 +494,7 @@ ipreservation_create() {
 	RET=$($CURL -X POST \
 	    -H "Content-Type: application/oracle-compute-v3+json" \
 	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
 	    -d "{\"parentpool\":\"/oracle/public/ippool\", \
              \"account\":\"/Compute-$OPC_DOMAIN/default\",\
              \"permanent\": true, \
@@ -503,6 +504,7 @@ ipreservation_create() {
 	RET=$($CURL -X POST \
 	    -H "Content-Type: application/oracle-compute-v3+json" \
 	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
 	    -d "{\"parentpool\":\"/oracle/public/ippool\", \
              \"account\":\"/Compute-$OPC_DOMAIN/default\",\
              \"permanent\": true, \
@@ -510,10 +512,10 @@ ipreservation_create() {
 	$IAAS_URL/ip/reservation/ )
     fi
     STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
-    if [ "$STATUS" = 200 ]; then
-	echo "$1 created"
+    if [ "$STATUS" = 201 ]; then
+	echo "$ans""$1"" created"
     else
-	echo $RET | $JQ
+	echo $RET
     fi
 }
 
@@ -524,19 +526,19 @@ ipreservation_delete() {
 	RET=$($CURL -X DELETE \
 	    -H "Content-Type: application/oracle-compute-v3+json" \
 	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
 	    $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans)
     else
 	RET=$($CURL -X DELETE \
 	    -H "Content-Type: application/oracle-compute-v3+json" \
 	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
 	    $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$1)
     fi
-
     STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
-
     # If successful, "HTTP/1.1 204 No Content" is returned.
     if [ "$STATUS" = 204 ]; then
-	echo "$1 deleted"
+	echo "$1""$ans"" deleted"
     else
 	echo $RET
     fi
