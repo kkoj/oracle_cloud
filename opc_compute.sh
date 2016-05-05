@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-05 12:44:27 katsu> 
+## Time-stamp: <2016-05-05 12:58:28 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -166,7 +166,7 @@ delete(){
 	    ipassociation_list
 	    instances_list
 	    ipreservation_list
-	    if [ -z ${UNUSED_GLOBAL_IP[1]} ]; then
+	    if [ -z ${UNUSED_GLOBAL_IP[0]} ]; then
 		echo
 		echo "There is no unused global IP address."
 		echo
@@ -429,7 +429,7 @@ ipassociation_list() {
 
     # get user account name
 
-    if [ -z ${USER_ID[1]} ];then
+    if [ -z ${USER_ID[0]} ];then
 	USER_ID=($($CURL -X GET \
 	    -H "Accept: application/oracle-compute-v3+directory+json" \
 	    -H "Cookie: $COMPUTE_COOKIE" \
