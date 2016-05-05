@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-05 13:15:20 katsu> 
+## Time-stamp: <2016-05-05 14:02:15 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -158,8 +158,8 @@ delete(){
     echo "   4: everything"
     echo
     echo -n "Choose 1,2,3,4: "
-    read ans
-    case $ans in
+    read ans1
+    case $ans1 in
 	1)
 	    # delete global IP address reservation
 	    get_cookie
