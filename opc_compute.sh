@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-06 09:57:22 katsu> 
+## Time-stamp: <2016-05-06 11:52:55 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -213,6 +213,7 @@ delete(){
 	    echo "Do you want to delete these storage volume?"
 	    echo -n "(1:Yes / 2:Only $OPC_ACCOUNT's / 3:No): "
 	    read ans2
+
 	    case $ans2 in
 		1 | [Yy]* | "")
 		    echo yes
@@ -232,7 +233,6 @@ delete(){
 	    get_cookie
 	    ipassociation_list
 	    instances_list list
-	    ipreservation_list
 	    echo
 	    echo "----------------"
 	    echo "Do you want to delete these instance?"
@@ -240,18 +240,26 @@ delete(){
 	    read ans2
 	    case $ans2 in
 		1 | [Yy]* | "")
-		    echo yes
-		    echo "Not yet implemented"
+		    for ((i = 0 ; i < ${#INSTANCE_ID[$i]};++i )) do
+		    echo ${INSTANCE_ID[$i]}
+		    instance_delete ${INSTANCE_ID[$i]}
+		    done
 		    ;;
 		2 | [Oo]* )
-		    echo only
-		    echo "Not yet implemented"
+		    for ((i = 0 ; i < ${#INSTANCE_ID[$i]};++i )) do
+		    USER=$(echo ${INSTANCE_ID[$i]} \
+		        | sed -n -e 's/\/[^/]*\/\([^/]*\)\/.*/\1/p')
+		    if [ "$USER" = "$OPC_ACCOUNT" ]; then
+			instance_delete ${UNUSED_GIP_NAME[$i]}
+		    fi
+		    done
 		    ;;
 		*)
 		    exit 1
 		    ;;
 	    esac
 	    ;;
+
 	4)
 	    # delete Everything
 	    get_cookie
@@ -321,6 +329,28 @@ instances() {
 	$IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ
 }
 
+instance_delete() {
+    if [ "$1" = "" ]; then
+	echo "What instance/uuid do you want to delete ?"
+	read ans
+	$CURL -X DELETE -H "Cookie: $COMPUTE_COOKIE" \
+	    $IAAS_URL/instance$ans
+    else
+	RET=$($CURL -X DELETE \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/instance$1)
+    fi
+    STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
+    # If successful, "HTTP/1.1 204 No Content" is returned.
+    if [ "$STATUS" = 204 ]; then
+	echo "$1""$ans"" deleted"
+    else
+	echo $RET
+    fi
+}
+
 instances_list() {
 
     INSTANCE=/tmp/instance-$OPC_DOMAIN
@@ -367,9 +397,8 @@ instances_list() {
     HOST_ID=$( echo ${INSTANCE_ID[$i]} \
 	| sed -e "s/\/Compute-$OPC_DOMAIN\/[^/]*\(.*\)/\1/" \
 	-e 's/^\///' )
-
     if [ "$1" == list ]; then
-	echo "USER:               $USER_ID"
+	echo "USER:               $USER"
 	echo "NAME:               $HOST_ID"
 	# show MAC address and private IP address
 	echo "MAC ADDRESS:        ${MAC_ADDRESS[$i]}"
@@ -405,14 +434,7 @@ instances_list() {
 	done
     fi
     done
-    rm $INSTANCE
-}
-
-instance_delete() {
-    echo "What instance/uuid do you want to delete ?"
-    read ans
-    $CURL -X DELETE -H "Cookie: $COMPUTE_COOKIE" \
-	$IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
+#    rm $INSTANCE
 }
 
 ipassociation() {
@@ -647,7 +669,7 @@ launchplan() {
 	-w '%{http_code}' \
         -d "{\"instances\": [ \
             {\"shape\": \"oc3\",\
-             \"imagelist\": \"/oracle/public/oel_6.4_2GB_v1\",\
+             \"imagelist\": \"/oracle/public/oel_6.4_2GB\",\
              \"sshkeys\": [\"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$SSHKEY\"],\
              \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$HOST_NAME\",\
              \"label\": \"$HOST_NAME\",\
@@ -721,6 +743,36 @@ orchestrations(){
 	| $JQ | tee $O_FILE \
 	| sed -n -e 's/.*\"name\": \"\/[^/]*\/\([^/]*\/[^/]*\/[^/\]*\).*/\1/p'\
         | uniq
+}
+
+orchestrations_delete(){
+    O_FILE=/tmp/orchestration-$OPC_DOMAIN
+#    $CURL -X GET \
+#	-H "Accept: application/oracle-compute-v3+directory+json"\
+#	-H "Cookie: $COMPUTE_COOKIE" \
+#        $IAAS_URL/orchestration/Compute-$OPC_DOMAIN/ | $JQ
+
+    $CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/orchestration/Compute-$OPC_DOMAIN/ \
+	| $JQ | tee $O_FILE \
+	| sed -n -e 's/.*\"name\": \"\/[^/]*\/\([^/]*\/[^/]*\/[^/\]*\).*/\1/p'\
+        | uniq
+
+    RET=$($CURL -X DELETE \
+	-H "Content-Type: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	-w '%{http_code}' \
+	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$1)
+    STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
+    # If successful, "HTTP/1.1 204 No Content" is returned.
+    if [ "$STATUS" = 204 ]; then
+	echo "$1""$ans"" deleted"
+    else
+	echo $RET
+    fi
+
 }
 
 role() {
