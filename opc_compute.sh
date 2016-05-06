@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-07 04:19:56 katsu> 
+## Time-stamp: <2016-05-07 04:40:12 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -37,6 +37,7 @@ fi
 declare -a USER_ID              # account name
 declare -a UNUSED_GIP_NAME      # unused IP address name on ipreservation
 declare -a UNUSED_GLOBAL_IP     # unused IP address on ipreservation
+declare -a INSTANCE_ID          # instance name
 declare -a SECRULE              # secrule name
 declare -a SECLIST              # seclist name
 declare -a SSHKEY               # sshkey name
@@ -168,7 +169,7 @@ delete(){
 	    get_cookie
 	    ipassociation_list
 	    instances_list list
-	    if [ -z ${INSTACE_ID[0]} ]; then
+	    if [ -z ${INSTANCE_ID[0]} ]; then
 		echo
 		echo "There is no instance."
 		echo
