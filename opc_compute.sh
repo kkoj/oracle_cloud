@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-07 01:18:57 katsu> 
+## Time-stamp: <2016-05-07 04:03:45 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -37,6 +37,9 @@ fi
 declare -a USER_ID              # account name
 declare -a UNUSED_GIP_NAME      # unused IP address name on ipreservation
 declare -a UNUSED_GLOBAL_IP     # unused IP address on ipreservation
+declare -a SECRULE              # secrule name
+declare -a SECLIST              # seclist name
+declare -a SSHKEY               # sshkey name
 
 ##
 ## parameter parse ##
@@ -155,7 +158,7 @@ delete(){
     echo "   1: instance"
     echo "   2: storage volume"
     echo "   3: global IP address"
-    echo "   4: above all, seclist, sshkey"
+    echo "   4: above all, seclist, secrule, sshkey"
     echo
     echo -n "Choose 1,2,3,4: "
     read ans1
@@ -282,11 +285,13 @@ delete(){
 	    instances_list list
 	    ipreservation_list
 	    storage_volume_list
+	    DEFAULT_SECLIST=0 
 	    seclist_list
+	    DEFAULT_SECRULE=0
 	    secrule_list
 	    sshkey_list
 	    echo
-	    echo "Do you want to delete everything on $OPC_DOMAIN site?"
+	    echo "Do you want to delete these on $OPC_DOMAIN site?"
 	    echo -n "(1:Yes / 2:Only $OPC_ACCOUNT's / 3:No): "
 	    read ans2
 	    case $ans2 in
@@ -304,13 +309,23 @@ delete(){
 		    ipreservation_delete ${UNUSED_GIP_NAME[$i]}
 		    done
 		    # secrule
-		    secrule_delete
+		    for ((i = 0 ; i < ${#SECRULE[@]}; ++i )) do
+		    secrule_delete ${SECRULE[$i]}
+		    done
+		    if [ "$DEFAULT_SECRULE" = 0 ];then
 		    secrule_default_create
+		    fi
 		    # seclist
-		    seclist_delete
+		    for ((i = 0 ; i < ${#SECLIST[@]}; ++i )) do
+		    seclist_delete ${SECLIST[$i]}
+                    done
+		    if [ "DEFAULT_SECLIST" = 0 ];then
 		    seclist_create default
+		    fi
 		    # sshkey
-		    sshkey_delete
+		    for ((i = 0 ; i < ${#SSHKEY[@]}; ++i )) do
+		    sshkey_delete ${SSHKEY[$i]}
+		    done
 		    ;;
 		2 | [Oo]* )
 		    # instance
@@ -321,7 +336,6 @@ delete(){
                         instance_delete ${INSTANCE_ID[$i]}
                     fi
                     done
-                    ;;
 		    # storage
 	       	    for ((i = 0 ; i < ${#STORAGE_VOL[@]};++i )) do
                     USER1=$(echo ${STORAGE_VOL[$i]} \
@@ -339,13 +353,34 @@ delete(){
                     fi
                     done
 		    # secrule
-		    secrule_delete
+		    for ((i = 0 ; i < ${#SECRULE[@]}; ++i )) do
+                    USER1=$(echo ${SECRULE[$i]} \
+                        | sed -n -e 's/\([^/]*\)\/.*/\1/p')
+                    if [ "$USER1" = "$OPC_ACCOUNT" ]; then
+		    secrule_delete ${SECRULE[$i]}
+                    fi
+		    done
+		    if [ "$DEFAULT_SECRULE" = 0 ];then
 		    secrule_default_create
+		    fi
 		    # seclist
-		    seclist_delete
+		    for ((i = 0 ; i < ${#SECLIST[@]}; ++i )) do
+                    USER1=$(echo ${SECLIST[$i]} \
+                        | sed -n -e 's/\([^/]*\)\/.*/\1/p')
+                    if [ "$USER1" = "$OPC_ACCOUNT" ]; then
+		    seclist_delete ${SECLIST[$i]}
+                    fi
+		    done
+		    if [ "DEFAULT_SECLIST" = 0 ];then
 		    seclist_create default
+		    fi
 		    # sshkey
-		    sshkey_delete
+		    for ((i = 0 ; i < ${#SSHKEY[@]}; ++i )) do
+                    USER1=$(echo ${SSHKEY[$i]} \
+                        | sed -n -e 's/\([^/]*\)\/.*/\1/p')
+                    if [ "$USER1" = "$OPC_ACCOUNT" ]; then
+		    sshkey_delete ${SSHKEY[$i]}
+                    fi
 		    done
 		    ;;
 		*)
@@ -905,12 +940,11 @@ seclist_delete(){
 	    -H "Cookie: $COMPUTE_COOKIE" \
 	    -w '%{http_code}' \
 	    $IAAS_URL/seclist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans )
-    else
-
-	$($CURL -X DELETE -H "Accept: application/oracle-compute-v3+json" \
+    elif [ "$1" != default/default ]; then
+	RET=$($CURL -X DELETE -H "Accept: application/oracle-compute-v3+json" \
 	    -H "Cookie: $COMPUTE_COOKIE" \
 	    -w '%{http_code}' \
-	    $IAAS_URL/seclist/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans )
+	    $IAAS_URL/seclist/Compute-$OPC_DOMAIN/$1 )
 	# If successful, "HTTP/1.1 204 No Content" is returned.
 	if [ "$STATUS" = 204 ]; then
 	    echo "$1""$ans"" deleted"
@@ -920,11 +954,46 @@ seclist_delete(){
     fi
 }
 
+seclist_list() {
+    SECLIST=($($CURL -X GET \
+	-H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/seclist/Compute-$OPC_DOMAIN/ | $JQ \
+        | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\"\,/\1/p' ))
+    echo
+    echo SECLIST
+    echo "-------------------------------------"
+    for (( i=0 ; i < ${#SECLIST[@]}; i++ )) do
+    echo "${SECLIST[$i]}"
+    if [ "${SECLIST[$i]}" = 'default/default' ]; then
+	DEFAULT_SECLIST=1
+    fi
+    done
+    echo "-------------------------------------"
+}
+
 secrule() {
     $CURL -X GET -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/secrule/Compute-$OPC_DOMAIN/ | $JQ
     echo
+}
+secrule_list() {
+    SECRULE=($($CURL -X GET \
+	-H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/secrule/Compute-$OPC_DOMAIN/ | $JQ \
+        | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\"\,/\1/p' ))
+    echo
+    echo SECRULE
+    echo "-------------------------------------"
+    for (( i=0 ; i < ${#SECRULE[@]}; i++ )) do
+    echo "${SECRULE[$i]}"
+    if [ "${SECRULE[$i]}" = 'DefaultPublicSSHAccess' ]; then
+	DEFAULT_SECRULE=1
+    fi
+    done
+    echo "-------------------------------------"
 }
 
 secrule_default_create() {
@@ -961,6 +1030,29 @@ secrule_default() {
     else
 	echo "Try to make DefaultPublicSSHAccess rule"
 	secrule_default_create
+    fi
+}
+
+secrule_delete(){
+    if [ "$1" = "" ]; then
+	echo "What is the name of secrule you want to delete ?"
+	read ans
+	RET=$($CURL -X DELETE -H "Accept: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/secrule/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans )
+    elif [ "$1" != DefaultPublicSSHAccess ]; then
+	RET=$($CURL -X DELETE -H "Accept: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/secrule/Compute-$OPC_DOMAIN/$1 )
+	STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
+	# If successful, "HTTP/1.1 204 No Content" is returned.
+	if [ "$STATUS" = 204 ]; then
+	    echo "$1""$ans"" deleted"
+	else
+	    echo $RET
+	fi
     fi
 }
 
@@ -1014,9 +1106,41 @@ sshkey_info(){
 }
 
 sshkey_list(){
-    $CURL -X GET -H "Content-Type: application/oracle-compute-v3+json" \
+    SSHKEY=($($CURL -X GET \
+	-H "Content-Type: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
-	$IAAS_URL/sshkey/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+	$IAAS_URL/sshkey/Compute-$OPC_DOMAIN/ | $JQ \
+        | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\"\,/\1/p' ))
+    echo
+    echo SSHKEY
+    echo "-------------------------------------"
+    for (( i=0 ; i < ${#SSHKEY[@]}; i++ )) do
+    echo "${SSHKEY[$i]}"
+    done
+    echo "-------------------------------------"
+}
+
+sshkey_delete(){
+    if [ "$1" = "" ]; then
+	echo "What is the name of sshkey you want to delete ?"
+	read ans
+	RET=$($CURL -X DELETE -H "Accept: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/sshkey/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans )
+    else
+	RET=$($CURL -X DELETE -H "Accept: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/sshkey/Compute-$OPC_DOMAIN/$1 )
+	STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
+	# If successful, "HTTP/1.1 204 No Content" is returned.
+	if [ "$STATUS" = 204 ]; then
+	    echo "$1""$ans"" deleted"
+	else
+	    echo $RET
+	fi
+    fi
 }
 
 storage_attachment_info() {
@@ -1257,6 +1381,10 @@ case $1 in
 	storage_volume_create
 	seclist_add
 	ipreservation
+	;;
+    secrule-list)
+	get_cookie
+      secrule_list
 	;;
     *)
 	cat <<-EOF
