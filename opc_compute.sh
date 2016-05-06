@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-07 04:03:45 katsu> 
+## Time-stamp: <2016-05-07 04:19:56 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -1395,6 +1395,7 @@ case $1 in
 	 imagelist  -- show OS and disk size template
 	 launchplan -- make an instance for temporary
 	 list       -- list all instance,ipreservation,storage volume
+	 delete     -- delete objects except JCS,DBCS auto making objects.
 EOF
 	exit 1
 esac
