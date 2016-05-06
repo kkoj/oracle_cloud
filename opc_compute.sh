@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-05 14:02:15 katsu> 
+## Time-stamp: <2016-05-06 09:57:22 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -211,7 +211,7 @@ delete(){
 	    echo "storage volume that is not used"
 	    echo "----------------"
 	    echo "Do you want to delete these storage volume?"
-	    echo -n "(1:Yes/2:Only $OPC_ACCOUNT's/3:No): "
+	    echo -n "(1:Yes / 2:Only $OPC_ACCOUNT's / 3:No): "
 	    read ans2
 	    case $ans2 in
 		1 | [Yy]* | "")
@@ -230,11 +230,13 @@ delete(){
 	3)
 	    # delete Instances
 	    get_cookie
-	    instances_list
+	    ipassociation_list
+	    instances_list list
+	    ipreservation_list
 	    echo
 	    echo "----------------"
 	    echo "Do you want to delete these instance?"
-	    echo -n "(1:Yes/2:Only $OPC_ACCOUNT's/3:No): "
+	    echo -n "(1:Yes / 2:Only $OPC_ACCOUNT's / 3:No): "
 	    read ans2
 	    case $ans2 in
 		1 | [Yy]* | "")
@@ -253,19 +255,19 @@ delete(){
 	4)
 	    # delete Everything
 	    get_cookie
-	    instances_list	    
+	    ipassociation_list
+	    instances_list list
+	    ipreservation_list
+	    storage_volume_list
 	    echo
 	    echo "Do you want to delete everything on $OPC_DOMAIN site?"
-	    echo -n "If yes, type DELETE: "
-	    echo -n "(1:Yes/2:Only $OPC_ACCOUNT's/3:No): "
+	    echo -n "(1:Yes / 2:Only $OPC_ACCOUNT's / 3:No): "
 	    read ans2
 	    case $ans2 in
 		1 | [Yy]* | "")
-		    echo yes
 		    echo "Not yet implemented"
 		    ;;
 		2 | [Oo]* )
-		    echo only
 		    echo "Not yet implemented"
 		    ;;
 		*)
