@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-06 12:43:13 katsu> 
+## Time-stamp: <2016-05-06 14:14:11 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -185,15 +185,15 @@ delete(){
 	    read ans2
 	    case $ans2 in
 		1 | [Yy]* | "")
-		    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[$i]};++i )) do
+		    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[@]};++i )) do
 		    ipreservation_delete ${UNUSED_GIP_NAME[$i]}
 		    done
 		    ;;
 		2 | [Oo]* )
-		    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[$i]};++i )) do
-		    USER=$(echo ${UNUSED_GIP_NAME[$i]} \
+		    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[@]};++i )) do
+		    USER1=$(echo ${UNUSED_GIP_NAME[$i]} \
 			| sed -n -e 's/\([^/]*\)\/.*/\1/p')
-		    if [ "$USER" = "$OPC_ACCOUNT" ]; then
+		    if [ "$USER1" = "$OPC_ACCOUNT" ]; then
 		    ipreservation_delete ${UNUSED_GIP_NAME[$i]}
 		    fi
 		    done
@@ -208,20 +208,25 @@ delete(){
 	    get_cookie
 	    storage_volume_list
 	    echo
-	    echo "storage volume that is not used"
-	    echo "----------------"
 	    echo "Do you want to delete these storage volume?"
 	    echo -n "(1:Yes / 2:Only $OPC_ACCOUNT's / 3:No): "
 	    read ans2
 
 	    case $ans2 in
 		1 | [Yy]* | "")
-		    echo yes
-		    echo "Not yet implemented"
+		    echo 
+		    for ((i = 0 ; i < ${#STORAGE_VOL[@]}; ++i )) do
+		    storage_volume_delete ${STORAGE_VOL[$i]}
+		    done
 		    ;;
 		2 | [Oo]* )
-		    echo only
-		    echo "Not yet implemented"
+		    for ((i = 0 ; i < ${#STORAGE_VOL[@]};++i )) do
+		    USER1=$(echo ${STORAGE_VOL[$i]} \
+			| sed -n -e 's/[^/]*\/\([^/]*\)\/.*/\1/p')
+		    if [ "$USER1" = "$OPC_ACCOUNT" ]; then
+			storage_volume_delete ${STORAGE_VOL[$i]}
+		    fi
+		    done
 		    ;;
 		*)
 		    exit 1
@@ -240,15 +245,15 @@ delete(){
 	    read ans2
 	    case $ans2 in
 		1 | [Yy]* | "")
-		    for ((i = 0 ; i < ${#INSTANCE_ID[$i]};++i )) do
+		    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i )) do
 		    instance_delete ${INSTANCE_ID[$i]}
 		    done
 		    ;;
 		2 | [Oo]* )
-		    for ((i = 0 ; i < ${#INSTANCE_ID[$i]};++i )) do
-		    USER=$(echo ${INSTANCE_ID[$i]} \
+		    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i )) do
+		    USER1=$(echo ${INSTANCE_ID[$i]} \
 		        | sed -n -e 's/\/[^/]*\/\([^/]*\)\/.*/\1/p')
-		    if [ "$USER" = "$OPC_ACCOUNT" ]; then
+		    if [ "$USER1" = "$OPC_ACCOUNT" ]; then
 			instance_delete ${INSTANCE_ID[$i]}
 		    fi
 		    done
@@ -391,13 +396,13 @@ instances_list() {
     # show information
     # show account name and host name
     for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i )) do
-    USER=$( echo ${INSTANCE_ID[$i]} \
+    USER1=$( echo ${INSTANCE_ID[$i]} \
 	| sed -e "s/\/Compute-$OPC_DOMAIN\/\([^/]*\).*/\1/" )
     HOST_ID=$( echo ${INSTANCE_ID[$i]} \
 	| sed -e "s/\/Compute-$OPC_DOMAIN\/[^/]*\(.*\)/\1/" \
 	-e 's/^\///' )
     if [ "$1" == list ]; then
-	echo "USER:               $USER"
+	echo "USER:               $USER1"
 	echo "NAME:               $HOST_ID"
 	# show MAC address and private IP address
 	echo "MAC ADDRESS:        ${MAC_ADDRESS[$i]}"
@@ -596,7 +601,6 @@ ipreservation_list() {
     # get the object from all users account
     # objects into $USER_ID[$i]/$OBJECT[$j]
 
-    echo
     echo "============================================================="
     echo "         ### GLOBAL IP ADDRESS (IP RESERVATION) ###"
     echo "============================================================="
@@ -940,18 +944,21 @@ storage_volume_create() {
 }
 
 storage_volume_delete() {
+CURL="curl -v"
     if [ $1 = "" ];then
-    RET=$($CURL -X POST -H "Cookie: $COMPUTE_COOKIE" \
-	-H "Content-Type: application/oracle-compute-v3+json" \
-	-w '%{http_code}' \
-	-d "{ \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans\"}" \
-	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ )
+	echo "Which Storage Volume do you want to delete ?"
+	read ans
+	RET=$($CURL -X DELETE -H "Cookie: $COMPUTE_COOKIE" \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -w '%{http_code}' \
+	    -d "{ \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans\"}" \
+	    $IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans )
     else
-    RET=$($CURL -X POST -H "Cookie: $COMPUTE_COOKIE" \
-	-H "Content-Type: application/oracle-compute-v3+json" \
-	-w '%{http_code}' \
-	-d "{ \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans\"}" \
-	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ )
+	RET=$($CURL -X DELETE -H "Cookie: $COMPUTE_COOKIE" \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -w '%{http_code}' \
+	    -d "{ \"name\": \"$1\"}" \
+	    $IAAS_URL/storage/volume/$1 )
     fi
     STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
     # If successful, "HTTP/1.1 204 No Content" is returned.
@@ -960,7 +967,6 @@ storage_volume_delete() {
     else
 	echo $RET
     fi
-
 }
 
 storage_volume_info() {
@@ -974,10 +980,13 @@ storage_volume_list() {
     echo "============================================================="
     echo "                   ### STORAGE VOLUME ###"
     echo "============================================================="
-    $CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
+    STORAGE_VOL=($($CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	-H "Accept: application/oracle-compute-v3+json" \
 	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/ \
-	| $JQ | sed -n -e 's/.*\"name\":.*\(\/Compute-.*\)\",/\1/p'
+	| $JQ | sed -n -e 's/.*\"name\":[^/]*\/\(Compute-.*\)\",/\1/p' ))
+    for ((i = 0 ; i < ${#STORAGE_VOL[@]}; ++i )) do
+    echo ${STORAGE_VOL[$i]}
+    done
 }
 
 storage_attachment() {
