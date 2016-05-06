@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-06 11:52:55 katsu> 
+## Time-stamp: <2016-05-06 12:43:13 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -241,7 +241,6 @@ delete(){
 	    case $ans2 in
 		1 | [Yy]* | "")
 		    for ((i = 0 ; i < ${#INSTANCE_ID[$i]};++i )) do
-		    echo ${INSTANCE_ID[$i]}
 		    instance_delete ${INSTANCE_ID[$i]}
 		    done
 		    ;;
@@ -250,7 +249,7 @@ delete(){
 		    USER=$(echo ${INSTANCE_ID[$i]} \
 		        | sed -n -e 's/\/[^/]*\/\([^/]*\)\/.*/\1/p')
 		    if [ "$USER" = "$OPC_ACCOUNT" ]; then
-			instance_delete ${UNUSED_GIP_NAME[$i]}
+			instance_delete ${INSTANCE_ID[$i]}
 		    fi
 		    done
 		    ;;
@@ -729,13 +728,8 @@ machineimage_info(){
     echo
 }
 
-orchestrations(){
+orchestration(){
     O_FILE=/tmp/orchestration-$OPC_DOMAIN
-#    $CURL -X GET \
-#	-H "Accept: application/oracle-compute-v3+directory+json"\
-#	-H "Cookie: $COMPUTE_COOKIE" \
-#        $IAAS_URL/orchestration/Compute-$OPC_DOMAIN/ | $JQ
-
     $CURL -X GET \
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
@@ -745,26 +739,23 @@ orchestrations(){
         | uniq
 }
 
-orchestrations_delete(){
+orchestration_delete(){
+#CURL="curl -v"
     O_FILE=/tmp/orchestration-$OPC_DOMAIN
-#    $CURL -X GET \
-#	-H "Accept: application/oracle-compute-v3+directory+json"\
-#	-H "Cookie: $COMPUTE_COOKIE" \
-#        $IAAS_URL/orchestration/Compute-$OPC_DOMAIN/ | $JQ
-
-    $CURL -X GET \
-        -H "Accept: application/oracle-compute-v3+json" \
-	-H "Cookie: $COMPUTE_COOKIE" \
-	$IAAS_URL/orchestration/Compute-$OPC_DOMAIN/ \
-	| $JQ | tee $O_FILE \
-	| sed -n -e 's/.*\"name\": \"\/[^/]*\/\([^/]*\/[^/]*\/[^/\]*\).*/\1/p'\
-        | uniq
-
-    RET=$($CURL -X DELETE \
-	-H "Content-Type: application/oracle-compute-v3+json" \
-	-H "Cookie: $COMPUTE_COOKIE" \
-	-w '%{http_code}' \
-	$IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/$1)
+    if [ "$1" = "" ]; then
+	echo "Which orchestration do you want to delete ?"
+	read ans
+	RET=$($CURL -X DELETE \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/orchestration/$ans )
+    else
+	RET=$($CURL -X DELETE \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/orchestration$1 )
+    fi
     STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
     # If successful, "HTTP/1.1 204 No Content" is returned.
     if [ "$STATUS" = 204 ]; then
@@ -773,6 +764,7 @@ orchestrations_delete(){
 	echo $RET
     fi
 
+#            -H "Accept: application/oracle-compute-v3+json" \
 }
 
 role() {
@@ -948,10 +940,27 @@ storage_volume_create() {
 }
 
 storage_volume_delete() {
-    $CURL -X POST -H "Cookie: $COMPUTE_COOKIE" \
+    if [ $1 = "" ];then
+    RET=$($CURL -X POST -H "Cookie: $COMPUTE_COOKIE" \
 	-H "Content-Type: application/oracle-compute-v3+json" \
+	-w '%{http_code}' \
 	-d "{ \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans\"}" \
-	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ )
+    else
+    RET=$($CURL -X POST -H "Cookie: $COMPUTE_COOKIE" \
+	-H "Content-Type: application/oracle-compute-v3+json" \
+	-w '%{http_code}' \
+	-d "{ \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans\"}" \
+	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ )
+    fi
+    STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
+    # If successful, "HTTP/1.1 204 No Content" is returned.
+    if [ "$STATUS" = 204 ]; then
+	echo "$1""$ans"" deleted"
+    else
+	echo $RET
+    fi
+
 }
 
 storage_volume_info() {
@@ -1062,9 +1071,13 @@ case $1 in
 	get_cookie
 	machineimage
 	;;
-    orchestrations)
+    orchestration)
 	get_cookie
-	orchestrations
+	orchestration
+	;;
+    orchestration-delete)
+	get_cookie
+	orchestration_delete
 	;;
     role)
 	get_cookie
