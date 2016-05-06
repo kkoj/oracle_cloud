@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-06 14:14:11 katsu> 
+## Time-stamp: <2016-05-06 14:20:50 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -207,6 +207,12 @@ delete(){
 	    # delete Storage Volume
 	    get_cookie
 	    storage_volume_list
+	    if [ -z ${STORAGE_VOL[0]} ]; then
+		echo
+		echo "There is no Storage Volume."
+		echo
+		exit 1
+	    fi
 	    echo
 	    echo "Do you want to delete these storage volume?"
 	    echo -n "(1:Yes / 2:Only $OPC_ACCOUNT's / 3:No): "
@@ -238,6 +244,12 @@ delete(){
 	    get_cookie
 	    ipassociation_list
 	    instances_list list
+	    if [ -z ${INSTACE_ID[0]} ]; then
+		echo
+		echo "There is no instance."
+		echo
+		exit 1
+	    fi
 	    echo
 	    echo "----------------"
 	    echo "Do you want to delete these instance?"
