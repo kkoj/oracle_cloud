@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-04-25 16:27:01 katsu>
+# Time-stamp: <2016-05-08 03:39:29 katsu>
 #
 # Some program were needed for this script
 #
@@ -42,6 +42,15 @@ STORAGE_URL="$OPC_URL"/v1/Storage-"$OPC_DOMAIN"
 ARCHIVE_URL="$OPC_URL"/v0/Storage-"$OPC_DOMAIN"
 AUTH_HEADER="temp-storage.$$"
 RESTORE_FILE="temp-restore.$$"
+
+##
+## varilable
+##
+
+declare -a CONTAINER         # name of container
+declare -a CONTAINER_OBJECT  # name of container/object
+RET=""                       # return stdout of HTTP status code
+INDEX=""                     # index
 
 ##
 ## functions
@@ -122,21 +131,91 @@ containers_info() {
 containers_list() {
 
 # object is $CONTAINER[$i]/$OBJECT[$j]
-    CONTAINER=($($CURL -X GET -H "$AUTH_TOKEN" "$STORAGE_URL"))
+    echo "Listing.."
+    CONTAINER=($($CURL -X GET -H "$AUTH_TOKEN" "$STORAGE_URL" ))
     for ((i = 0 ; i < ${#CONTAINER[@]};++i )) do
     OBJECT=($($CURL -X GET -H "$AUTH_TOKEN" $STORAGE_URL/${CONTAINER[$i]}))
     echo /${CONTAINER[$i]}
     for ((j = 0 ; j < ${#OBJECT[@]};++j )) do
     echo /${CONTAINER[$i]}/${OBJECT[$j]}
+    CONTAINER_OBJECT[${#CONTAINER_OBJECT[@]}]=${CONTAINER[$i]}/${OBJECT[$j]}
     done
     done
+    echo
+
 }
 
 delete() {
-    echo -n "Which container or container/object do you want to delete ?  "
-    read ans
-    $CURL -X DELETE -H "$AUTH_TOKEN" $STORAGE_URL/$ans
+
+    if [ -z "${CONTAINER[0]}" ]; then
+        echo
+        echo "There is no container or object to delete"
+        echo
+        exit 1
+    fi
+
+    echo "Which object do you want to delete ?"
     echo
+    echo "   1: one of storage objects"
+    echo "   2: ALL storage objects"
+    echo
+    echo -n "(1:chose one / 2: DELEATE All): "
+    read ans1
+
+    case $ans1 in
+	1)
+	    echo "Which container or container/object do you want to delete ?"
+	    read ans2
+	    RET=($CURL -X DELETE \
+		-w '%{http_code}' \
+		-H "$AUTH_TOKEN" $STORAGE_URL/$ans2)
+
+	    # get the status code
+	    STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
+	    if [ $STATUS = 204 ]; then
+		echo " ${CONTAINER[$i]}/${OBJECT[$j]} was deleted"
+	    elif [ $STATUS = 409 ]; then
+		echo "${CONTAINER[$i]} exists, but isn't empty"
+	    else
+		# It is not a status code.
+		echo $RET
+	    fi
+	    ;;
+	2)
+	    for ((INDEX = 0 ; INDEX < ${#CONTAINER_OBJECT[@]};++INDEX )) do
+	    RET=$($CURL -X DELETE \
+		-w '%{http_code}' \
+		-H "$AUTH_TOKEN" \
+		$STORAGE_URL/${CONTAINER_OBJECT[$INDEX]})
+	    delete_status
+	    done
+	    for ((INDEX = 0 ; INDEX < ${#CONTAINER[@]};++INDEX )) do
+	    RET=$($CURL -X DELETE \
+		-w '%{http_code}' \
+		-H "$AUTH_TOKEN" \
+		$STORAGE_URL/${CONTAINER[$INDEX]})
+	    delete_status
+	    done
+	    echo
+	    ;;
+	*)
+	    exit 1
+	    ;;
+    esac
+}
+
+delete_status() {
+
+	    # get the status code
+	    STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
+	    if [ $STATUS = 204 ]; then
+		echo " ${CONTAINER_OBJECT[$INDEX]} was deleted"
+	    elif [ $STATUS = 409 ]; then
+		echo "${CONTAINER[$INDEX]} exists, but isn't empty"
+	    else
+		# It is not a status code.
+		echo $RET
+	    fi
 }
 
 download() {
@@ -148,7 +227,6 @@ download() {
 
     # get the status code
     STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
-
     if [ $STATUS = 200 ]; then
 	echo "Object has been restored or is being retrieved"
     elif [ $STATUS = 404 ]; then
