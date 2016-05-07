@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-07 04:40:12 katsu> 
+## Time-stamp: <2016-05-08 04:12:17 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -540,7 +540,7 @@ instances_list() {
 	done
     fi
     done
-    #    rm $INSTANCE
+    rm $INSTANCE
 }
 
 ipassociation() {
@@ -854,7 +854,7 @@ orchestration(){
 }
 
 orchestration_delete(){
-    #CURL="curl -v"
+
     O_FILE=/tmp/orchestration-$OPC_DOMAIN
     if [ "$1" = "" ]; then
 	echo "Which orchestration do you want to delete ?"
@@ -1166,7 +1166,7 @@ storage_volume_create() {
 }
 
 storage_volume_delete() {
-    CURL="curl -v"
+
     if [ $1 = "" ];then
 	echo "Which Storage Volume do you want to delete ?"
 	read ans
