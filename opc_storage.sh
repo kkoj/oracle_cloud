@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-05-08 03:39:29 katsu>
+# Time-stamp: <2016-05-08 05:33:02 katsu>
 #
 # Some program were needed for this script
 #
@@ -166,20 +166,10 @@ delete() {
 	1)
 	    echo "Which container or container/object do you want to delete ?"
 	    read ans2
-	    RET=($CURL -X DELETE \
+	    RET=$($CURL -X DELETE \
 		-w '%{http_code}' \
 		-H "$AUTH_TOKEN" $STORAGE_URL/$ans2)
-
-	    # get the status code
-	    STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
-	    if [ $STATUS = 204 ]; then
-		echo " ${CONTAINER[$i]}/${OBJECT[$j]} was deleted"
-	    elif [ $STATUS = 409 ]; then
-		echo "${CONTAINER[$i]} exists, but isn't empty"
-	    else
-		# It is not a status code.
-		echo $RET
-	    fi
+	    delete_status input
 	    ;;
 	2)
 	    for ((INDEX = 0 ; INDEX < ${#CONTAINER_OBJECT[@]};++INDEX )) do
@@ -187,14 +177,14 @@ delete() {
 		-w '%{http_code}' \
 		-H "$AUTH_TOKEN" \
 		$STORAGE_URL/${CONTAINER_OBJECT[$INDEX]})
-	    delete_status
+	    delete_status object
 	    done
 	    for ((INDEX = 0 ; INDEX < ${#CONTAINER[@]};++INDEX )) do
 	    RET=$($CURL -X DELETE \
 		-w '%{http_code}' \
 		-H "$AUTH_TOKEN" \
 		$STORAGE_URL/${CONTAINER[$INDEX]})
-	    delete_status
+	    delete_status container
 	    done
 	    echo
 	    ;;
@@ -206,16 +196,22 @@ delete() {
 
 delete_status() {
 
-	    # get the status code
-	    STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
-	    if [ $STATUS = 204 ]; then
-		echo " ${CONTAINER_OBJECT[$INDEX]} was deleted"
-	    elif [ $STATUS = 409 ]; then
-		echo "${CONTAINER[$INDEX]} exists, but isn't empty"
-	    else
-		# It is not a status code.
-		echo $RET
-	    fi
+    # get the status code
+    STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
+    if [ "$STATUS" = 204 ]; then
+	if [ $1 = input ]; then
+	    echo " $ans2 was deleted"
+	elif [ $1 = object ]; then
+	    echo " ${CONTAINER_OBJECT[$INDEX]} was deleted"
+	elif [ $1 = container ]; then
+	    echo " ${CONTAINER[$INDEX]} was deleted"
+	fi
+    elif [ "$STATUS" = 409 ]; then
+	echo "${CONTAINER[$INDEX]} exists, but isn't empty"
+    else
+	# It is not a status code.
+	echo $RET
+    fi
 }
 
 download() {
@@ -227,9 +223,9 @@ download() {
 
     # get the status code
     STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
-    if [ $STATUS = 200 ]; then
+    if [ "$STATUS" = 200 ]; then
 	echo "Object has been restored or is being retrieved"
-    elif [ $STATUS = 404 ]; then
+    elif [ "$STATUS" = 404 ]; then
 	echo "The specified resource doesn't exist"
 	rm $FILE_NAME
     else
@@ -252,8 +248,8 @@ upload(){
     # get the status code
     STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
 
-    if [ $STATUS = 201 ]; then
-	echo "Object was created"
+    if [ "$STATUS" = 201 ]; then
+	echo "Object $FILE_NAME was created"
     else
 	echo $RET
     fi
