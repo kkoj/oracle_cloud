@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-08 04:12:17 katsu> 
+## Time-stamp: <2016-05-09 20:01:52 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -1091,13 +1091,20 @@ sshkey(){
     echo -n "What is the name of the new sshkey ? "
     read ans
     key=$(cat $HOME/.ssh/id_rsa.pub)
-    $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
+    RET=$($CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
+	-w '%{http_code}' \
 	-d "{ \"enabled\": true,\
               \"key\": \"$key\",\
      	      \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans\"}" \
-	$IAAS_URL/sshkey/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans
-    echo
+	$IAAS_URL/sshkey/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans)
+    STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
+    # If successful, "HTTP/1.1 201 Created." is returned.
+    if [ "$STATUS" = 201 ]; then
+	echo "$ans"" created"
+    else
+	echo $RET
+    fi
 }
 
 sshkey_info(){
