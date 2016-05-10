@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-09 20:01:52 katsu> 
+## Time-stamp: <2016-05-10 10:52:31 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -1397,13 +1397,14 @@ case $1 in
     *)
 	cat <<-EOF
 	Usage: opc_compute.sh -l "CONF_FILE" { auth | show | shape | ... } 
-	 auth       -- authentication with Oracle Cloud
-	 show       -- show compute instance
-	 shape      -- show oCPU + Memory size template
-	 imagelist  -- show OS and disk size template
-	 launchplan -- make an instance for temporary
-	 list       -- list all instance,ipreservation,storage volume
-	 delete     -- delete objects except JCS,DBCS auto making objects.
+	 auth           -- authentication with Oracle Cloud
+	 show           -- show compute instance
+	 sshkey         -- upload ssh-key
+	 shape          -- show oCPU + Memory size template
+	 imagelist      -- show OS and disk size template
+	 launchplan     -- make an instance for temporary
+	 list           -- list all instance,ipreservation,storage volume
+	 delete         -- delete objects except JCS,DBCS auto making objects.
 EOF
 	exit 1
 esac
