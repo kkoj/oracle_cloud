@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-05-10 10:55:47 katsu>
+# Time-stamp: <2016-05-10 11:00:57 katsu>
 #
 # Some program were needed for this script
 #
@@ -344,7 +344,7 @@ case "$1" in
 	;;
     *)
 	cat <<-EOF
-	Usage: opc_storage.sh -l "CONFIG_FILE" { list | create | upload | ... }
+	Usage: opc_storage.sh -l "CONF_FILE" { list | create | upload | ... }
 	  list           -- list container/object
 	  create         -- make new container for standard storage
 	  create-archive -- make new container for archive storage
