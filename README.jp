@@ -106,5 +106,24 @@ OPC_PASS="password"
 
    $ opc_storage.sh -l CONFIG_FILE list
 
+Usage: opc_compute.sh -l "CONF_FILE" { auth | show | shape | ... } 
+  auth           -- authentication with Oracle Cloud
+  show           -- show compute instance
+  shape          -- show oCPU + Memory size template
+  imagelist      -- show OS and disk size template
+  launchplan     -- make an instance for temporary
+  list           -- list all instance,ipreservation,storage volume
+  delete         -- delete objects except JCS,DBCS auto making objects.
+
+Usage: opc_storage.sh -l "CONFIG_FILE" { list | create | upload | ... }
+  list           -- list container/object
+  create         -- make new container for standard storage
+  create-archive -- make new container for archive storage
+  restore        -- restore archived file
+  upload         -- upload local file
+  delete         -- delete container or container/object
+
+When you want to down load archived files, restore it first.
+
 --
 https://github.com/kkoj/oracle_cloud
