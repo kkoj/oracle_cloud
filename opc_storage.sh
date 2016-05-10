@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-05-08 05:33:02 katsu>
+# Time-stamp: <2016-05-10 10:55:47 katsu>
 #
 # Some program were needed for this script
 #
@@ -285,10 +285,6 @@ case "$1" in
 	echo $AUTH_TOKEN
 	echo $STORAGE_URL
 	;;
-    archive-create)
-	get_auth
-	archive_container_create
-	;;
     archive-download)
 	get_auth
 	archive_download
@@ -300,6 +296,10 @@ case "$1" in
     create)
 	get_auth
 	container_create
+	;;
+    create-archive)
+	get_auth
+	archive_container_create
 	;;
     delete)
 	get_auth
@@ -345,12 +345,12 @@ case "$1" in
     *)
 	cat <<-EOF
 	Usage: opc_storage.sh -l "CONFIG_FILE" { list | create | upload | ... }
-	  list             -- list container/object
-	  create           -- make new container for standard storage
-	  archive-create   -- make new container for archive storage
-	  restore          -- restore archived file
-	  upload           -- upload local file
-	  delete           -- delete container or container/object
+	  list           -- list container/object
+	  create         -- make new container for standard storage
+	  create-archive -- make new container for archive storage
+	  restore        -- restore archived file
+	  upload         -- upload local file
+	  delete         -- delete container or container/object
 
 	When you want to down load archived files, restore it first.
 EOF
