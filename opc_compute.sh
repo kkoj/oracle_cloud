@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-10 10:52:31 katsu> 
+## Time-stamp: <2016-05-18 18:09:31 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -525,21 +525,23 @@ instances_list() {
 	GIP=${VCABLE_GIP[${VCABLE_ID[$i]}]}
 	# set global IP address and HOST name into HOST_GIP
 	# to use ipreservation_list
-	GIP_HOST[$GIP]=$HOST_ID
+	if [ "$GIP" != "" ]; then
+	    GIP_HOST[$GIP]=$HOST_ID
+	fi
     else
 	# bash ver.3
 	for ((m = 0 ; m < ${#VCABLE_INDEX[@]}; ++m )) do
-	if [ ${VCABLE_ID[$i]} = ${VCABLE_INDEX[$m]} ]; then
-	    if [ "$1" == list ]; then
-		echo "GLOBAL IP ADDRESS:  ${GLOBAL_IP_INDEX[$m]}"
-		echo
+	    if [ ${VCABLE_ID[$i]} = ${VCABLE_INDEX[$m]} ]; then
+		if [ "$1" == list ]; then
+		    echo "GLOBAL IP ADDRESS:  ${GLOBAL_IP_INDEX[$m]}"
+		    echo
+		fi
+		HOST_INDEX[$m]=$HOST_ID
+		break
 	    fi
-	    HOST_INDEX[$m]=$HOST_ID
-	    break
+	done
 	fi
 	done
-    fi
-    done
     rm $INSTANCE
 }
 
@@ -782,7 +784,7 @@ launchplan() {
 	-w '%{http_code}' \
         -d "{\"instances\": [ \
             {\"shape\": \"oc3\",\
-             \"imagelist\": \"/oracle/public/oel_6.4_2GB\",\
+             \"imagelist\": \"/oracle/public/oel_6.4_5GB_v1\",\
              \"sshkeys\": [\"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$SSHKEY\"],\
              \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$HOST_NAME\",\
              \"label\": \"$HOST_NAME\",\
@@ -854,7 +856,7 @@ orchestration(){
 }
 
 orchestration_delete(){
-
+CURL="curl -v"
     O_FILE=/tmp/orchestration-$OPC_DOMAIN
     if [ "$1" = "" ]; then
 	echo "Which orchestration do you want to delete ?"
@@ -862,13 +864,13 @@ orchestration_delete(){
 	RET=$($CURL -X DELETE \
 	    -H "Cookie: $COMPUTE_COOKIE" \
 	    -w '%{http_code}' \
-	    $IAAS_URL/orchestration/$ans )
+	    $IAAS_URL/orchestration/Compute-$OPC_DOMAIN/$ans )
     else
 	RET=$($CURL -X DELETE \
 	    -H "Content-Type: application/oracle-compute-v3+json" \
 	    -H "Cookie: $COMPUTE_COOKIE" \
 	    -w '%{http_code}' \
-	    $IAAS_URL/orchestration$1 )
+	    $IAAS_URL/orchestration/Compute-$OPC_DOMAIN/$1 )
     fi
     STATUS=$(echo $RET | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
     # If successful, "HTTP/1.1 204 No Content" is returned.
