@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-05-10 11:00:57 katsu>
+# Time-stamp: <2016-05-25 16:54:21 katsu>
 #
 # Some program were needed for this script
 #
@@ -44,7 +44,7 @@ AUTH_HEADER="temp-storage.$$"
 RESTORE_FILE="temp-restore.$$"
 
 ##
-## varilable
+## variable
 ##
 
 declare -a CONTAINER         # name of container
@@ -159,7 +159,7 @@ delete() {
     echo "   1: one of storage objects"
     echo "   2: ALL storage objects"
     echo
-    echo -n "(1:chose one / 2: DELEATE All): "
+    echo -n "(1:chose one / 2: DELETE All): "
     read ans1
 
     case $ans1 in
@@ -172,7 +172,37 @@ delete() {
 	    delete_status input
 	    ;;
 	2)
+
+	    if [ -z "${CONTAINER[0]}" ]; then
+		echo
+		echo "There is no container or object to delete"
+		echo
+		exit 1
+	    fi
+
+	    # some file could not delete but replace the file with null file
+	    # then it could be deleted.
+
+	    TMP_DIR=/tmp/storage-object-delete-$$
+	    mkdir $TMP_DIR
+
 	    for ((INDEX = 0 ; INDEX < ${#CONTAINER_OBJECT[@]};++INDEX )) do
+
+	    # prepare null file
+
+	    FILE_NAME=`basename ${CONTAINER_OBJECT[$INDEX]}`
+
+	    cd $TMP_DIR
+	    touch $FILE_NAME
+
+	    # replace null file
+
+	    RET=$($CURL -X PUT \
+		-w '%{http_code}' \
+		-H "$AUTH_TOKEN" \
+		-T $FILE_NAME \
+		$STORAGE_URL/${CONTAINER_OBJECT[$INDEX]})
+
 	    RET=$($CURL -X DELETE \
 		-w '%{http_code}' \
 		-H "$AUTH_TOKEN" \
@@ -186,7 +216,9 @@ delete() {
 		$STORAGE_URL/${CONTAINER[$INDEX]})
 	    delete_status container
 	    done
+	    rm -rf $TMP_DIR
 	    echo
+
 	    ;;
 	*)
 	    exit 1
@@ -305,6 +337,11 @@ case "$1" in
 	get_auth
 	containers_list
 	delete
+	;;
+    delete2)
+	get_auth
+	containers_list
+	delete2
 	;;
     download)
 	get_auth
