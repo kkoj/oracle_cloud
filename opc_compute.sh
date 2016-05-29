@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-18 18:09:31 katsu> 
+## Time-stamp: <2016-05-25 15:48:00 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -439,8 +439,9 @@ instance_delete() {
     if [ "$1" = "" ]; then
 	echo "What instance/uuid do you want to delete ?"
 	read ans
-	$CURL -X DELETE -H "Cookie: $COMPUTE_COOKIE" \
-	    $IAAS_URL/instance$ans
+	RET=$($CURL -X DELETE -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/instance/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans)
     else
 	RET=$($CURL -X DELETE \
 	    -H "Content-Type: application/oracle-compute-v3+json" \
@@ -784,20 +785,23 @@ launchplan() {
 	-w '%{http_code}' \
         -d "{\"instances\": [ \
             {\"shape\": \"oc3\",\
-             \"imagelist\": \"/oracle/public/oel_6.4_5GB_v1\",\
+             \"imagelist\": \"/oracle/public/OL_6.7_3GB-1.3.0-20160411\",\
              \"sshkeys\": [\"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$SSHKEY\"],\
              \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$HOST_NAME\",\
              \"label\": \"$HOST_NAME\",\
+             \"attributes\": {\"userdata\": \
+              {\"corente-tunnel-args\": \"--local-tunnel-address=172.16.21.2 --csg-hostname=csg.compute-gse00000626.oraclecloud.internal --csg-tunnel-address=172.16.254.1 --onprem-subnets=172.16.20.0/24,192.168.0.0/24\"} },\
              \"networking\":{\"eth0\": \
               {\"dns\": [\"$HOST_NAME\"], \
                \"seclists\": [\"/Compute-$OPC_DOMAIN/default/default\"], \
-               \"nat\":\"ippool:/oracle/public/ippool\"} \
-            } } ] }" \
+               \"nat\":\"ippool:/oracle/public/ippool\"} }\
+             } ] }" \
 	$IAAS_URL/launchplan/)
 
     STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
 
     if [ "$STATUS" = 201 ]; then
+	echo $RET
 	echo "$HOST_NAME created"
     else
 	echo $RET
@@ -853,6 +857,14 @@ orchestration(){
 	| $JQ | tee $O_FILE \
 	| sed -n -e 's/.*\"name\": \"\/[^/]*\/\([^/]*\/[^/]*\/[^/\]*\).*/\1/p'\
         | uniq
+}
+
+orchestration_container(){
+    O_FILE=/tmp/orchestration-$OPC_DOMAIN
+    $CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/orchestration/Compute-$OPC_DOMAIN/default
 }
 
 orchestration_delete(){
@@ -1238,6 +1250,10 @@ case $1 in
     delete)
 	delete
 	;;
+    delete-instance)
+	get_cookie
+	instance_delete
+	;;
     imagelist)
 	get_cookie
 	imagelist_info
@@ -1284,10 +1300,6 @@ case $1 in
 	get_cookie
 	instances
 	;;
-    instance-delete)
-	get_cookie
-	instance_delete
-	;;
     launchplan)
 	get_cookie
 	launchplan
@@ -1314,6 +1326,10 @@ case $1 in
     orchestration)
 	get_cookie
 	orchestration
+	;;
+    orchestration-container)
+	get_cookie
+	orchestration_container
 	;;
     orchestration-delete)
 	get_cookie
