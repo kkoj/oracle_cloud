@@ -1,56 +1,19 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-05-25 16:54:21 katsu>
+# Time-stamp: <2016-05-30 23:29:40 katsu>
 #
 # Some program were needed for this script
 #
 # "curl"
 
-##
-## set parameters
-##
+DIRNAME=`dirname $0`
+. $DIRNAME/opc_init.sh
 
-CONF_FILE_DIR="$HOME/bin"
-#CURL="curl -s -x http://your.proxy:80"
-CURL="curl -s "
-
-##
-## option parse
-##
-
-CONF_FILE_NAME=`echo $@ | sed -e 's/\(.*\)\(-l \)\(.*\)/\3/' | awk '{print $1}'`
-CONF_FILE=$CONF_FILE_DIR/$CONF_FILE_NAME
-
-if [ -f $CONF_FILE ]; then
-    . $CONF_FILE
-    ANS=`echo $@ | sed -e "s/\(.*\)\(-l \)$CONF_FILE_NAME\(.*\)/\3/"`
-    if [ "$ANS" != "" ]; then
-	shift 2
-    fi
-else
-    echo
-    echo "Please check CONF_FILE"
-    echo
-fi
-
-##
-## setting parameters
-##
-
-OPC_URL=https://"$OPC_DOMAIN"."storage.oraclecloud.com"
-STORAGE_URL="$OPC_URL"/v1/Storage-"$OPC_DOMAIN"
-ARCHIVE_URL="$OPC_URL"/v0/Storage-"$OPC_DOMAIN"
+STORAGE_URL=""
+ARCHIVE_URL=""
 AUTH_HEADER="temp-storage.$$"
 RESTORE_FILE="temp-restore.$$"
 
-##
-## variable
-##
-
-declare -a CONTAINER         # name of container
-declare -a CONTAINER_OBJECT  # name of container/object
-RET=""                       # return stdout of HTTP status code
-INDEX=""                     # index
 
 ##
 ## functions
@@ -58,9 +21,9 @@ INDEX=""                     # index
 
 get_auth() {
     $CURL -X GET \
-    -H "X-Storage-User: Storage-$OPC_DOMAIN:$OPC_ACCOUNT" \
-    -H "X-Storage-Pass: $OPC_PASS" "$OPC_URL/auth/v1.0" \
-    -D $AUTH_HEADER
+	-H "X-Storage-User: Storage-$OPC_DOMAIN:$OPC_ACCOUNT" \
+	-H "X-Storage-Pass: $OPC_PASS" "$OPC_URL/auth/v1.0" \
+	-D $AUTH_HEADER
     X_AUTH_TOKEN=`grep -i X-Auth-Token: $AUTH_HEADER`
     X_STORAGE_URL=`grep -i X-Storage-Url: $AUTH_HEADER | awk '{print $2}'`
     AUTH_TOKEN=`echo $X_AUTH_TOKEN | tr -d '\r\n'`
@@ -126,11 +89,12 @@ container_compute_images() {
 
 containers_info() {
     $CURL -X GET -H "$AUTH_TOKEN" "$STORAGE_URL"
+    echo
 }    
 
 containers_list() {
 
-# object is $CONTAINER[$i]/$OBJECT[$j]
+    # object is $CONTAINER[$i]/$OBJECT[$j]
     echo "Listing.."
     CONTAINER=($($CURL -X GET -H "$AUTH_TOKEN" "$STORAGE_URL" ))
     for ((i = 0 ; i < ${#CONTAINER[@]};++i )) do
@@ -251,7 +215,7 @@ download() {
     read ans
     FILE_NAME=`basename $ans`
     RET=$($CURL -X GET -H "$AUTH_TOKEN" \
-	 -w '%{http_code}' -o $FILE_NAME $STORAGE_URL/$ans )
+	-w '%{http_code}' -o $FILE_NAME $STORAGE_URL/$ans )
 
     # get the status code
     STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
@@ -311,7 +275,7 @@ _metadata_info(){
 	grep Content-Length: | awk '{print $2}'
 }
 
-case "$1" in
+case "$ARG" in
     auth)
 	get_auth
 	echo $AUTH_TOKEN
@@ -381,7 +345,10 @@ case "$1" in
 	;;
     *)
 	cat <<-EOF
-	Usage: opc_storage.sh -l "CONF_FILE" { list | create | upload | ... }
+
+	Usage: opc_storage.sh [-l "your domain" ] [ options ]
+
+	  options:
 	  list           -- list container/object
 	  create         -- make new container for standard storage
 	  create-archive -- make new container for archive storage
@@ -390,6 +357,7 @@ case "$1" in
 	  delete         -- delete container or container/object
 
 	When you want to down load archived files, restore it first.
+
 EOF
 	exit 1
 esac
