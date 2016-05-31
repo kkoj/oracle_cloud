@@ -1,9 +1,7 @@
+## Time-stamp: <2016-06-01 00:04:28 katsu>
 ##
 ## parameters
 ##
-
-#CURL="curl -s -x http://your.proxy:80"
-CURL="curl -s "
 
 OPC_URL=""
 CONF_DIR=$HOME/.oracle_cloud-1.0
@@ -136,6 +134,7 @@ make_temp_config(){
     fi
 }
 
+
 if [ -f $CONF_DIR/config-main ];then
     . $CONF_DIR/config-main
 else
@@ -164,19 +163,19 @@ if [ "$CONF_LOCATION" != "" ]; then
 	echo 
 	echo -n "(Yes/No): "
 	read ans3
-    case $ans3 in
-        [Yy]* )
-	    set_iaas_url
-	    set_opc_domain
-	    set_opc_account
-	    set_opc_password
-	    make_temp_config
-            ;;
-	[Nn]* | * )
-	    exit 1
-	    ;;
-    esac
-    . $CONF_DIR/config-main
+	case $ans3 in
+            [Yy]* )
+		set_iaas_url
+		set_opc_domain
+		set_opc_account
+		set_opc_password
+		make_temp_config
+		;;
+	    [Nn]* | * )
+		exit 1
+		;;
+	esac
+	. $CONF_DIR/config-main
     fi
 fi
 
@@ -188,3 +187,16 @@ OPC_URL=https://"$OPC_DOMAIN"."storage.oraclecloud.com"
 STORAGE_URL="$OPC_URL"/v1/Storage-"$OPC_DOMAIN"
 ARCHIVE_URL="$OPC_URL"/v0/Storage-"$OPC_DOMAIN"
 
+# unser construction
+# show or change configuration
+config() {
+
+    # show $CONF_DIR files
+    domain_config=( `ls -1 $CONF_DIR | sed -n -e /^config-[^main$]/p` )
+    for ((x = 0 ; x < ${#domain_config[@]}; ++x ))
+    do
+	echo ${domain_config[$x]} | sed -e 's/config-//'
+	cat $CONF_DIR/${domain_config[$x]}
+	echo
+    done
+}
