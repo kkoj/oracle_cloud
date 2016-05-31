@@ -3,19 +3,22 @@ Oracle Cloud "Hello World Kit"
 Oracle Cloud の API やネットワークを利用するためのアイデアを提供しています。
 いかんせん急ごしらえのツールなので非売品かつ無保証です。
 それでもOracle CloudのPOCや使い方を理解するには便利だと思います。
+ComputeとStorageクラウドサービスで利用できます。
 
 0.動作環境
 
   bash,python,curlがある環境であれば動作するはずです。
 
   Windows 10 Techpreview の Ubuntu 環境でも動作しました。
-  Windows 7, 8.1 の場合は cygwin が使いやすい環境です。
+  Windows 7, 8.1 の場合は cygwin で動きます。
 
-  cygwin https://www.cygwin.com/
-  インストーラ https://www.cygwin.com/setup-x86_64.exe
+  Cygwin の設定
 
-  パッケージ選択では次のカテゴリから少なくとも次の3つを追加します。
-  Bin列にチェックを入れます。
+    cygwin https://www.cygwin.com/
+    インストーラ https://www.cygwin.com/setup-x86_64.exe
+
+    パッケージ選択では次のカテゴリから少なくとも次の3つを追加します。
+    Bin列にチェックを入れます。
 
      Select Package 
      ---------------
@@ -23,17 +26,15 @@ Oracle Cloud の API やネットワークを利用するためのアイデア�
      Python python
      Devel  git
 
-  Desktop にある Cygwin64 Terminal アイコンをダブルクリックすると動作します。
+    Desktop にある Cygwin64 Terminal アイコンをダブルクリックすると動作します。
 
-  環境設定
+  環境設定 (Cygwin,Linux,Mac)
 
   次のコマンドを入力します。
 
   $ git clone https://github.com/kkoj/oracle_cloud.git
-  $ mkdir bin
   $ echo 'export PATH=$PATH:$HOME/oracle_cloud' >> .bash_profile
-　$ . .bash_profile
-  $ vi bin/CONFIG_FILE
+  $ . .bash_profile
 
   それぞれ以下の意味があります。
 
@@ -41,11 +42,20 @@ Oracle Cloud の API やネットワークを利用するためのアイデア�
     proxyの設定が必要な場合があります。
   - config ファイルをおくディレクトリ"bin"を作ります。
   - PATH に oracle_cloud を追加します。
-  - CONFIG_FILE を作ります。ファイル名は自由に付けられます。
+  - source で .bash_profile を更新します。
 
 1. config ファイルをつくります
 
-CONFIG_FILE
+Oracle CloudにWebブラウザでログインして、Compute の詳細ページにある
+REST Endpointを紙に書きとります。
+つぎに opc_compute.sh または opc_storage.sh を実行してください。
+
+  $ opc_compute.sh
+
+質問にしたがってパラメータを埋めてください。
+するとconfig ファイルが $HOME/.oracle_cloud-1.0/ 以下に作成されます。
+
+config-"your_domain"
 -------------------------------
 IAAS_URL="https://your.endpoint.oraclecloud.com"
 OPC_DOMAIN="your_domain"
@@ -53,31 +63,26 @@ OPC_ACCOUNT="your_account"
 OPC_PASS="password"
 -------------------------------
 
-  IAAS_URLはWEB GUIでOracle Cloudにログインして、Endpointを書き写します。
-
-2. スクリプトに直接パラメーターを定義します。
+2. opc_compute.sh スクリプトに直接パラメータを定義します。
 
   #
   # opc_compute.sh
   #
 
-   CONF_FILE_DIR="$HOME/bin"
    ADJ_TIME=9000
-
-  CONF_FILE_DIR は opc_compute.sh がどこにあるか定義します。
 
   ADJ_TIME
 
-  スクリプトにはキャシュ機能が設けられています。
+  opc_compute.sh スクリプトにはキャシュ機能が設けられています。
   もしはじめてオラクルクラウドに接続した場合の出力はこのようになります。
 
-   $ opc_compute.sh -l SITE1 auth
+   $ opc_compute.sh auth
    Authenticated
 
   でも、二度目ならばこのようになります。
 
-   $ opc_compute.sh -l SITE1 auth
-   Authenticated with cache file compute_cookie-SITE1
+   $ opc_compute.sh auth
+   Authenticated with cache file compute_cookie-"your domain"
 
   これはキャシュファイルを用いているためです。
   認証にかかる時間はリスエストが多くなると大きなオーバーヘッドです。
@@ -92,30 +97,26 @@ OPC_PASS="password"
 
   これらは get_cookie()内で echo と date で確認できるようにしています。
 
-  #
-  # opc_storage.sh
-  #
-
-   CONF_FILE_DIR="$HOME/bin"
-
-  CONF_FILE_DIR は opc_storage.sh がどこにあるか定義します。
-
 3. コマンドライン
 
-   $ opc_compute.sh -l CONFIG_FILE show
+   $ opc_compute.sh show
+   $ opc_storage.sh list
 
-   $ opc_storage.sh -l CONFIG_FILE list
+Usage: opc_compute.sh [-l "your domain" ] [ options ]
 
-Usage: opc_compute.sh -l "CONF_FILE" { auth | show | shape | ... } 
+  options:
   auth           -- authentication with Oracle Cloud
   show           -- show compute instance
+  sshkey         -- upload ssh-key
   shape          -- show oCPU + Memory size template
   imagelist      -- show OS and disk size template
   launchplan     -- make an instance for temporary
   list           -- list all instance,ipreservation,storage volume
   delete         -- delete objects except JCS,DBCS auto making objects.
 
-Usage: opc_storage.sh -l "CONFIG_FILE" { list | create | upload | ... }
+Usage: opc_storage.sh [-l "your domain" ] [ options ]
+
+  options:
   list           -- list container/object
   create         -- make new container for standard storage
   create-archive -- make new container for archive storage

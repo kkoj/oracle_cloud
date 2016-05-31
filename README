@@ -3,13 +3,16 @@ Oracle Cloud "Hello World Kit"
 There is some idea and solution for Oracle Cloud Service API and network.
 Just being ad-hook hack, it is not for sale and no warranty.
 But It is useful for POC or understanding how to use Oracle Cloud Service.
+These scripts cover "Compute","Storage" cloud service.
 
 0. Supported Environment
 
   bash,python,curl are needed for this scripts.
 
   It works on Windows 10 Techpreview Linux (Ubuntu) environment.
-  It may useful using the cygwin tools on Windows 7, 8.1
+  It may run using the cygwin tools on Windows 7, 8.1
+
+    Setting the Cygwin
 
     cygwin https://www.cygwin.com/
     installer https://www.cygwin.com/setup-x86_64.exe
@@ -25,27 +28,34 @@ But It is useful for POC or understanding how to use Oracle Cloud Service.
 
      It will start with double click "Cygwin64 Terminal" icon on the Desktop.
 
-  Environment Settings
+  Environment Settings (Cygwin,Linux,Mac)
 
-  Input next lines,
+  Input the next lines,
 
   $ git clone https://github.com/kkoj/oracle_cloud.git
-  $ mkdir bin
   $ echo 'export PATH=$PATH:$HOME/oracle_cloud' >> .bash_profile
-　$ . .bash_profile
-  $ vi bin/CONFIG_FILE
+  $ . .bash_profile
 
   It means,
 
   - get git repository
     Sometime you may need proxy settings.
-  - make "bin" directory to deploy config files.
   - add oracle_cloud directory to PATH environment parameter.
-  - make CONFIG_FILE. Any file name is OK.
+  - source new .bash_profile
 
 1. make configuration file like this.
 
-CONFIG_FILE
+Login to Oracle Cloud with Web browser, and get REST Endpoint on
+Compute Cloud Service Detail.
+
+Run opc_compute.sh or opc_storage.sh.
+
+  $ opc_compute.sh
+
+Please answer the questions by the script.
+Then the configuration file will be in $HOME/.oracle_cloud-1.0/ .
+
+config-"your_domain"
 -------------------------------
 IAAS_URL="https://your.endpoint.oraclecloud.com"
 OPC_DOMAIN="your_domain"
@@ -53,32 +63,27 @@ OPC_ACCOUNT="your_account"
 OPC_PASS="password"
 -------------------------------
 
-  Your IAAS_URL parameter is on Oracle Cloud Web console as Endpoint.
-
-2. set parameter in the scripts
+2. set parameter in the opc_compute.sh script
 
   #
   # opc_compute.sh
   #
 
-   CONF_FILE_DIR="$HOME/bin"
    ADJ_TIME=9000
-
-  CONF_FILE_DIR is where opc_compute.sh deployed.
 
   ADJ_TIME
 
-  The script has cache mechanism.
+  The opc_compute.sh script has cache mechanism.
   If your access to Oracle Cloud is first time,
   the output may be like this;
   
-   $ opc_compute.sh -l SITE1 auth
+   $ opc_compute.sh auth
    Authenticated
 
   But if it is second time;
 
-   $ opc_compute.sh -l SITE1 auth
-   Authenticated with cache file compute_cookie-SITE1
+   $ opc_compute.sh auth
+   Authenticated with cache file compute_cookie-"your domain"
 
   It is using cache file.
   So authentication is too much over head time for many request,
@@ -93,28 +98,26 @@ OPC_PASS="password"
 
   There is echo and date options in get_cookie().
 
-  #
-  # opc_storage.sh
-  #
-
-  CONF_FILE_DIR is where opc_storage.sh deployed.
-
 3. command line
 
-   $ opc_compute.sh -l CONFIG_FILE show
+   $ opc_compute.sh show
+   $ opc_storage.sh list
 
-   $ opc_storage.sh -l CONFIG_FILE list
+Usage: opc_compute.sh [-l "your domain" ] [ options ]
 
-Usage: opc_compute.sh -l "CONF_FILE" { auth | show | shape | ... } 
+  options:
   auth           -- authentication with Oracle Cloud
   show           -- show compute instance
+  sshkey         -- upload ssh-key
   shape          -- show oCPU + Memory size template
   imagelist      -- show OS and disk size template
   launchplan     -- make an instance for temporary
   list           -- list all instance,ipreservation,storage volume
   delete         -- delete objects except JCS,DBCS auto making objects.
 
-Usage: opc_storage.sh -l "CONFIG_FILE" { list | create | upload | ... }
+Usage: opc_storage.sh [-l "your domain" ] [ options ]
+
+  options:
   list           -- list container/object
   create         -- make new container for standard storage
   create-archive -- make new container for archive storage
