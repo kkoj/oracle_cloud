@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-05-30 23:29:40 katsu>
+# Time-stamp: <2016-05-31 13:24:51 katsu>
 #
 # Some program were needed for this script
 #
@@ -11,8 +11,8 @@ DIRNAME=`dirname $0`
 
 STORAGE_URL=""
 ARCHIVE_URL=""
-AUTH_HEADER="temp-storage.$$"
-RESTORE_FILE="temp-restore.$$"
+AUTH_HEADER="$CONF_DIR/temp-storage.$$"
+RESTORE_FILE="$CONF_DIR/temp-restore.$$"
 
 
 ##

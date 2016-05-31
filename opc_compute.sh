@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-25 15:48:00 katsu> 
+## Time-stamp: <2016-05-31 15:47:28 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -9,24 +9,25 @@
 ## "jq or python"
 ## "base64"
 
-#CURL="curl --trace-ascii erlog "
 #CURL="curl -s -x http://your.proxy:80"
 CURL="curl -s"
 #JQ="jq . "
 JQ="python -m json.tool "
 
 ##
-## Please set parameter
+## parameters
 ##
 
-CONF_FILE_DIR="$HOME/bin"
 ADJ_TIME=9000
+
+DIRNAME=`dirname $0`
+. $DIRNAME/opc_init.sh
 
 # Bash 4 has Associative array.If bash is ver4 on this environment,
 # we use associative array.
 BASH_VERSION=$(LANG=C bash --version \
     |sed -n -e 's/GNU bash, version \([0-9]\).*/\1/p')
-if [ $BASH_VERSION -ge 4 ]; then
+if [ "$BASH_VERSION" -ge 4 ]; then
     declare -A VCABLE_GIP       # vcable and Global IP address
     declare -A GIP_HOST         # Global IP address and host
 else
@@ -42,41 +43,16 @@ declare -a SECRULE              # secrule name
 declare -a SECLIST              # seclist name
 declare -a SSHKEY               # sshkey name
 
-##
-## parameter parse ##
-##
-
-# temporary text file for auth info
-SESSION_ID="temp-compute.$$"
-# cut the name of CONF_FILE from command line
-CONF_FILE_NAME=`echo $@ | sed -e 's/\(.*\)\(-l \)\(.*\)/\3/' | awk '{print $1}'`
-CONF_FILE=$CONF_FILE_DIR/$CONF_FILE_NAME
-COOKIE_FILE="compute_cookie-$CONF_FILE_NAME"
-
-if [ -f $CONF_FILE ]; then
-    . $CONF_FILE
-    ANS=`echo $@ | sed -e "s/\(.*\)\(-l \)$CONF_FILE_NAME\(.*\)/\3/"`
-    if [ "$ANS" != "" ]; then    
-	shift 2
-    fi
-else
-    echo "please set your \"CONF_FILE\" with -l"
-    exit 1
-fi  
-
-##
-## parameters
-##
-
-OPC_URL=https://"$OPC_DOMAIN"."storage.oraclecloud.com"
-STORAGE_URL="$OPC_URL"/v1/Storage-"$OPC_DOMAIN"
+SESSION_ID="$CONF_DIR/temp-compute.$$"    # temporary text file for auth info
+COOKIE_FILE="$CONF_DIR/compute_cookie-$OPC_DOMAIN"
 
 ##
 ## Authentication function
 ##
 
 get_cookie() {
-    if [ -f $COOKIE_FILE ]; then
+    if [ -f "$COOKIE_FILE" ]; then
+
 	epoch=$(date '+%s')
 	EPOCH=$( sed 's/^nimbula=//' $COOKIE_FILE | base64 --decode \
 	    | LANG=C sed 's/\(.*\)expires\(.*\)expires\(.*\)/\2/' \
@@ -91,6 +67,8 @@ get_cookie() {
 
 	# check $EPOCH value is valid
 	RET=$(echo $EPOCH | sed -e 's/[0-9]\{10,\}/OK/')
+
+
 	if [ "$RET" != OK ]; then
 	    echo "Authentication has been failed"
 	    echo "Please delete the file (COOKIE_FILE) $COOKIE_FILE"
@@ -100,7 +78,8 @@ get_cookie() {
 	if [ $(($EPOCH-$epoch)) -gt $ADJ_TIME ]; then
 
 	    COMPUTE_COOKIE=$(cat $COOKIE_FILE)
-	    STATUS="Authenticated with cache file $COOKIE_FILE"
+	    cache_file=`basename $COOKIE_FILE`
+	    STATUS="Authenticated with cache file $cache_file"
 	else
 	    _get_cookie
 	fi
@@ -109,8 +88,7 @@ get_cookie() {
     fi
 
     # uncomment next line for no caching $COOKIE_FILE
-    #    rm $COOKIE_FILE
-
+    #   rm $COOKIE_FILE
 }
 
 _get_cookie() {
@@ -825,8 +803,8 @@ machineimage_create(){
     #    read FILE_NAME
     FILE_NAME="CentOS-7-x86_64-OracleCloud.raw.tar.gz"
     IMAGE_NAME=centos7-cui
-    #    opc_storage.sh -l $CONF_FILE_NAME _upload compute_images $FILE_NAME
-    SIZE=`opc_storage.sh -l $CONF_FILE_NAME _metadata $FILE_NAME`
+    #    opc_storage.sh -l $OPC_DOMAIN _upload compute_images $FILE_NAME
+    SIZE=`opc_storage.sh -l $OPC_DOMAIN _metadata $FILE_NAME`
     SIZE_TOTAL=`echo $SIZE | tr -d '\r\n'`
     echo $SIZE_TOTAL
     $CURL -X POST -H "Content-Type: application/oracle-compute-v3+json" \
@@ -1188,7 +1166,7 @@ storage_volume_create() {
 
 storage_volume_delete() {
 
-    if [ $1 = "" ];then
+    if [ "$1" = "" ];then
 	echo "Which Storage Volume do you want to delete ?"
 	read ans
 	RET=$($CURL -X DELETE -H "Cookie: $COMPUTE_COOKIE" \
@@ -1238,7 +1216,7 @@ storage_attachment() {
 	$IAAS_URL/storage/attachment/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/
 }
 
-case $1 in
+case "$ARG" in
     account)
 	get_cookie
 	account
@@ -1246,6 +1224,9 @@ case $1 in
     auth) 
 	get_cookie
 	echo $STATUS
+	;;
+    config)
+	config
 	;;
     delete)
 	delete
@@ -1414,7 +1395,9 @@ case $1 in
 	;;
     *)
 	cat <<-EOF
-	Usage: opc_compute.sh -l "CONF_FILE" { auth | show | shape | ... } 
+	Usage: opc_compute.sh [-l "your domain" ] [ options ]
+
+	 options:
 	 auth           -- authentication with Oracle Cloud
 	 show           -- show compute instance
 	 sshkey         -- upload ssh-key
