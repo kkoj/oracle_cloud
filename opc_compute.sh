@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-06-04 22:51:51 katsu> 
+## Time-stamp: <2016-06-05 01:58:19 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -26,18 +26,9 @@ DIRNAME=`dirname $0`
 # Bash 4 has Associative array.If bash is ver4 on this environment,
 # But Mac OS X has bash ver.3. So we do not use associative array.
 #
-
-
-#BASH_VERSION=$(LANG=C bash --version \
-#    |sed -n -e 's/GNU bash, version \([0-9]\).*/\1/p')
-#if [ "$BASH_VERSION" -ge 4 ]; then
-#    declare -A VCABLE_GIP       # vcable and Global IP address
-#    declare -A GIP_HOST         # Global IP address and host
-#else
-    declare -a HOST_INDEX       # host name(uuid) in instance
-    declare -a VCABLE_INDEX     # instance and ipassociation has it.
-    declare -a GLOBAL_IP_INDEX  # ipassociation and ipreservation has it.
-#fi
+declare -a HOST_INDEX           # host name(uuid) in instance
+declare -a VCABLE_INDEX         # instance and ipassociation has it.
+declare -a GLOBAL_IP_INDEX      # ipassociation and ipreservation have it.
 declare -a USER_ID              # account name
 declare -a UNUSED_GIP_NAME      # unused IP address name on ipreservation
 declare -a UNUSED_GLOBAL_IP     # unused IP address on ipreservation
@@ -449,6 +440,7 @@ instances_list() {
 	echo "                    ### INSTANCE ###"
 	echo "============================================================="
 	echo
+	echo "Host             MAC address        Private IP address  Global IP address"
     fi
 
     # sed:1 pick up object "name"
@@ -457,21 +449,21 @@ instances_list() {
 
     # get HOST uuid
     INSTANCE_ID=($($CURL -X GET -H "Cookie:$COMPUTE_COOKIE" \
-	$IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ | tee $INSTANCE \
-	| sed -n -e 's/.*\"name\".*\(\/Compute-.*\)\".*/\1/p' \
-	| sed -e 's/\(\/Compute-.*\/.*\/.*\/.*\)\/.*/\1/' | uniq \
-	| sed -n -e '/[0-9a-z]\{8\}-[0-9a-z]\{4\}-.*-.*-[0-9a-z]\{12\}/p' ))
+			 $IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ | tee $INSTANCE \
+			  | sed -n -e 's/.*\"name\".*\(\/Compute-.*\)\".*/\1/p' \
+			  | sed -e 's/\(\/Compute-.*\/.*\/.*\/.*\)\/.*/\1/' | uniq \
+			  | sed -n -e '/[0-9a-z]\{8\}-[0-9a-z]\{4\}-.*-.*-[0-9a-z]\{12\}/p' ))
     
     # get eth0 MAC address
     MAC_ADDRESS=($(grep -A1 '\"address\":' $INSTANCE \
-	| sed -n -e 's/.*\"\(.*:.*:.*\)\",/\1/p'))
+			  | sed -n -e 's/.*\"\(.*:.*:.*\)\",/\1/p'))
 
     # get private IP address
     PRIVATE_IP=($(sed -n -e 's/.*\"ip\": \"\(.*\)\",/\1/p' $INSTANCE ))
 
     # get vcable id
     VCABLE_ID=($(sed -n -e 's/.*\"vcable_id\".*\/.*\/.*\/\(.*\)\",/\1/p' \
-	$INSTANCE ))
+		     $INSTANCE ))
 
     # Now INSTANCE_ID,MAC_ADDRESS,PRIVATE_IP,VCABLE_ID has same index in row.
     # Because they are in same block in $INSTANCE file.
@@ -480,61 +472,29 @@ instances_list() {
     # show information
     # show account name and host name
     for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i )) do
-    USER1=$( echo ${INSTANCE_ID[$i]} \
-	| sed -e "s/\/Compute-$OPC_DOMAIN\/\([^/]*\).*/\1/" )
-    HOST_ID=$( echo ${INSTANCE_ID[$i]} \
-	| sed -e "s/\/Compute-$OPC_DOMAIN\/[^/]*\(.*\)/\1/" \
-	-e 's/^\///' )
-    HOST_NAME=$( echo $HOST_ID | sed -e 's/\(.*\)[/].*/\1/' )
+	USER1=$( echo ${INSTANCE_ID[$i]} \
+		       | sed -e "s/\/Compute-$OPC_DOMAIN\/\([^/]*\).*/\1/" )
+	HOST_ID=$( echo ${INSTANCE_ID[$i]} \
+			 | sed -e "s/\/Compute-$OPC_DOMAIN\/[^/]*\(.*\)/\1/" \
+			       -e 's/^\///' )
+	HOST_NAME=$( echo $HOST_ID | sed -e 's/\(.*\)[/].*/\1/' )
 
-#    if [ "$1" == list ]; then
-#	echo "USER:               $USER1"
-#	echo "NAME:               $HOST_ID"
-#	# show MAC address and private IP address
-#	echo "MAC ADDRESS:        ${MAC_ADDRESS[$i]}"
-#	echo "PRIVATE IP ADDRESS: ${PRIVATE_IP[$i]}"
-#    fi
 
-    # show global IP address
-
-#    if [ $BASH_VERSION = 4 ]; then
-#	# bash ver.4
-#	# VCABLE_GIP is a global parameter gotten in ipassociation_list
-#	# get global IP address from VCABLE_GIP
-#	if [ "$1" == list ]; then
-#	    echo "GLOBAL IP ADDRESS:  ${VCABLE_GIP[${VCABLE_ID[$i]}]}"
-#	    echo "GLOBAL IP ADDRESS:  ${VCABLE_GIP[${VCABLE_ID[$i]}]}"
-#	    echo
-#	fi
-
-    # link vcable and global IP address
-#	GIP=${VCABLE_GIP[${VCABLE_ID[$i]}]}
-	# set global IP address and HOST name into HOST_GIP
-	# to use ipreservation_list
-#	if [ "$GIP" != "" ]; then
-#	    GIP_HOST[$GIP]=$HOST_ID
-#	    printf "$HOST_NAME\n"
-#	    printf "${MAC_ADDRESS[$i]}  ${PRIVATE_IP[$i]}\n"
-#	fi
-#    else
-	# bash ver.3
 	for ((m = 0 ; m < ${#VCABLE_INDEX[@]}; ++m )) do
 	    if [ ${VCABLE_ID[$i]} = ${VCABLE_INDEX[$m]} ]; then
 		if [ "$1" == list ]; then
-		    printf "$HOST_NAME\n"
-		    printf "${MAC_ADDRESS[$i]} "
-		    printf "${PRIVATE_IP[$i]}\t"
-		    printf "${GLOBAL_IP_INDEX[$m]} "
+		    printf "%-16s " $HOST_NAME
+		    printf "%17s" ${MAC_ADDRESS[$i]}
+		    printf "%17s" ${PRIVATE_IP[$i]}
+		    printf "%17s" ${GLOBAL_IP_INDEX[$m]}
 		    printf "\n"
-		    echo
 		fi
 		HOST_INDEX[$m]=$HOST_ID
 		break
 	    fi
 	done
-#	fi
-	done
-	    rm $INSTANCE
+     done
+    rm $INSTANCE
 }
 
 ipassociation() {
@@ -585,21 +545,13 @@ ipassociation_list() {
 
     # set global IP address into VCABLE_GIP
     # "${#GLOBAL_IP[@]}" is total number of GLOBAL_IP 
-    if [ $BASH_VERSION = 4 ]; then
-	# bash ver.4
-	# GLOBAL_IP[j] link with VCABLE[j] on associative array
-	for ((n = 0 ; n < ${#GLOBAL_IP1[@]}; ++n )) do
-	VCABLE_GIP[${VCABLE[$n]}]=${GLOBAL_IP1[$n]}
-	done
-    else
-	# bash ver.3
-	# make VCABLE_INDEX[j] and GLOBAL_IP_INDEX[j] in same index row
-	for ((n = 0 ; n < ${#GLOBAL_IP1[@]}; ++n )) do
+
+    # make VCABLE_INDEX[j] and GLOBAL_IP_INDEX[j] in same index row
+    for ((n = 0 ; n < ${#GLOBAL_IP1[@]}; ++n )) do
 	VCABLE_INDEX[${#VCABLE_INDEX[@]}]=${VCABLE[$n]}
 	GLOBAL_IP_INDEX[${#GLOBAL_IP_INDEX[@]}]=${GLOBAL_IP1[$n]}
-	done
-    fi
-    rm $IP_ASSOC-${USER_ID[$m]}
+    done
+	rm $IP_ASSOC-${USER_ID[$m]}
     done
 }
 
@@ -673,8 +625,7 @@ ipreservation_list() {
     # ipassociation: "name"(uuid),"reservation"(uuid),"vcable"(uuid)
     # ipreservation: "name"(uuid),"ip"(uuid)
 
-    # We have to link host id to ipreservation id
-    # with ipassociation_list().
+    # We have to link host id to ipreservation id with ipassociation_list().
     # Some time ipreservation id has no linkage with any host id.
 
     IP_RESERV=/tmp/ipreservation-$OPC_DOMAIN
@@ -687,7 +638,6 @@ ipreservation_list() {
     # That is why trying to get USER_ID first and to get each sub objects.
 
     # get user account name
-
     USER_ID=($($CURL -X GET \
 	-H "Accept: application/oracle-compute-v3+directory+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
@@ -696,7 +646,6 @@ ipreservation_list() {
 
     # get the object from all users account
     # objects into $USER_ID[$i]/$OBJECT[$j]
-
     echo "============================================================="
     echo "         ### GLOBAL IP ADDRESS (IP RESERVATION) ###"
     echo "============================================================="
@@ -716,50 +665,40 @@ ipreservation_list() {
 
     echo "-------------------------------------------------------------"
     echo -e "IP ADDRESS\tHOST UUID"
-    if [ $BASH_VERSION = 4 ]; then
-	# bash ver.4
-	# show Global IP Address with GIP_HOST from instances_list
-	for ((i = 0 ; i < ${#GLOBAL_IP[@]}; ++i )) do
-	echo -e "${GLOBAL_IP[$i]}\t${GIP_HOST[${GLOBAL_IP[$i]}]}"
 
-	if [ "${GIP_HOST[${GLOBAL_IP[$i]}]}" = "" ]; then
-	    # pickup no use IP address using in delete()
-	    UNUSED_GLOBAL_IP[${#UNUSED_GLOBAL_IP[@]}]=${GLOBAL_IP[$i]}
-	    UNUSED_GIP_NAME[${#UNUSED_GIP_NAME[@]}]=${RESERVE_NAME[$i]}
-	fi
-	done
-    else
-	# bash ver.3
-	# GLOBAL_IP is from ipreservation
-	# GLOBAL_IP_INDEX is from ipassociation
-	if [ "${#GLOBAL_IP_INDEX[@]}" = 0 ]; then
-	    for ((k = 0 ; k < ${#GLOBAL_IP[@]}; ++k )) do
+    # GLOBAL_IP is from ipreservation
+    # GLOBAL_IP_INDEX is from ipassociation
+
+    # get unused Globa IP address
+
+    if [ "${#GLOBAL_IP_INDEX[@]}" == 0 ]; then
+	for ((k = 0 ; k < ${#GLOBAL_IP[@]}; ++k )) do
 	    echo "${GLOBAL_IP[$k]}"
 	    # pickup no use IP address using in delete()
 	    UNUSED_GLOBAL_IP[${#UNUSED_GLOBAL_IP[@]}]=${GLOBAL_IP[$k]}
 	    UNUSED_GIP_NAME[${#UNUSED_GIP_NAME[@]}]=${RESERVE_NAME[$k]}
-	    done
-	fi
-	for ((i = 0 ; i < ${#GLOBAL_IP[@]}; ++i )) do
-	for ((j = 0 ; j < ${#GLOBAL_IP_INDEX[@]}; ++j )) do
-	if [ "${GLOBAL_IP[$i]}" = "${GLOBAL_IP_INDEX[$j]}" ]; then
-	    echo -e "${GLOBAL_IP_INDEX[$j]}\t${HOST_INDEX[$j]}"
-	    break
-	    # it must be remaining of global IP address without HOST
-	elif [ "$j" = "${#GLOBAL_IP_INDEX[@]}" ];then
-	    echo -e "${GLOBAL_IP[$i]}"
-	    # pickup no use IP address using in delete()
-	    GIP="${GLOBAL_IP[$i]}"
-	    GIP_NAME="${RESERVE_NAME[$i]}"
-	    UNUSED_GLOBAL_IP[${#UNUSED_GLOBAL_IP[@]}]=$GIP
-	    UNUSED_GIP_NAME[${#UNUSED_GIP_NAME[@]}]=$GIP_NAME
-	fi
-	done
 	done
     fi
-    echo "-------------------------------------------------------------"
-    rm $IP_RESERV-${USER_ID[$m]}    
+
+     for ((i = 0 ; i < ${#GLOBAL_IP[@]}; ++i )) do # 3
+	 for ((j = 0 ; j < ${#GLOBAL_IP_INDEX[@]}; ++j )) do #4
+	     if [ "${GLOBAL_IP[$i]}" = "${GLOBAL_IP_INDEX[$j]}" ]; then
+		 echo -e "${GLOBAL_IP_INDEX[$j]}\t${HOST_INDEX[$j]}"
+		 break
+		 # it must be remaining of global IP address without HOST
+	     elif [ "$j" = "${#GLOBAL_IP_INDEX[@]}" ];then
+		 echo -e "${GLOBAL_IP[$i]}"
+		 # pickup no use IP address using in delete()
+		 GIP="${GLOBAL_IP[$i]}"
+		 GIP_NAME="${RESERVE_NAME[$i]}"
+		 UNUSED_GLOBAL_IP[${#UNUSED_GLOBAL_IP[@]}]=$GIP
+		 UNUSED_GIP_NAME[${#UNUSED_GIP_NAME[@]}]=$GIP_NAME
+	     fi
+         done
+      done
     done
+	     echo "-------------------------------------------------------------"
+     rm $IP_RESERV-${USER_ID[$m]}    
 }
 
 launchplan() {
