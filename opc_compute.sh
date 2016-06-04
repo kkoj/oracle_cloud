@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-05-31 15:47:28 katsu> 
+## Time-stamp: <2016-06-04 22:51:51 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -24,17 +24,20 @@ DIRNAME=`dirname $0`
 . $DIRNAME/opc_init.sh
 
 # Bash 4 has Associative array.If bash is ver4 on this environment,
-# we use associative array.
-BASH_VERSION=$(LANG=C bash --version \
-    |sed -n -e 's/GNU bash, version \([0-9]\).*/\1/p')
-if [ "$BASH_VERSION" -ge 4 ]; then
-    declare -A VCABLE_GIP       # vcable and Global IP address
-    declare -A GIP_HOST         # Global IP address and host
-else
+# But Mac OS X has bash ver.3. So we do not use associative array.
+#
+
+
+#BASH_VERSION=$(LANG=C bash --version \
+#    |sed -n -e 's/GNU bash, version \([0-9]\).*/\1/p')
+#if [ "$BASH_VERSION" -ge 4 ]; then
+#    declare -A VCABLE_GIP       # vcable and Global IP address
+#    declare -A GIP_HOST         # Global IP address and host
+#else
     declare -a HOST_INDEX       # host name(uuid) in instance
     declare -a VCABLE_INDEX     # instance and ipassociation has it.
     declare -a GLOBAL_IP_INDEX  # ipassociation and ipreservation has it.
-fi
+#fi
 declare -a USER_ID              # account name
 declare -a UNUSED_GIP_NAME      # unused IP address name on ipreservation
 declare -a UNUSED_GLOBAL_IP     # unused IP address on ipreservation
@@ -458,7 +461,7 @@ instances_list() {
 	| sed -n -e 's/.*\"name\".*\(\/Compute-.*\)\".*/\1/p' \
 	| sed -e 's/\(\/Compute-.*\/.*\/.*\/.*\)\/.*/\1/' | uniq \
 	| sed -n -e '/[0-9a-z]\{8\}-[0-9a-z]\{4\}-.*-.*-[0-9a-z]\{12\}/p' ))
-
+    
     # get eth0 MAC address
     MAC_ADDRESS=($(grep -A1 '\"address\":' $INSTANCE \
 	| sed -n -e 's/.*\"\(.*:.*:.*\)\",/\1/p'))
@@ -470,7 +473,7 @@ instances_list() {
     VCABLE_ID=($(sed -n -e 's/.*\"vcable_id\".*\/.*\/.*\/\(.*\)\",/\1/p' \
 	$INSTANCE ))
 
-    # Now INSTANCE_ID,MAC_ADDRESS,PRIVATE_IP,VCABLE_ID has same index as row.
+    # Now INSTANCE_ID,MAC_ADDRESS,PRIVATE_IP,VCABLE_ID has same index in row.
     # Because they are in same block in $INSTANCE file.
     # Next "for loop" use $i to pick up the factor.
 
@@ -482,46 +485,56 @@ instances_list() {
     HOST_ID=$( echo ${INSTANCE_ID[$i]} \
 	| sed -e "s/\/Compute-$OPC_DOMAIN\/[^/]*\(.*\)/\1/" \
 	-e 's/^\///' )
-    if [ "$1" == list ]; then
-	echo "USER:               $USER1"
-	echo "NAME:               $HOST_ID"
-	# show MAC address and private IP address
-	echo "MAC ADDRESS:        ${MAC_ADDRESS[$i]}"
-	echo "PRIVATE IP ADDRESS: ${PRIVATE_IP[$i]}"
-    fi
+    HOST_NAME=$( echo $HOST_ID | sed -e 's/\(.*\)[/].*/\1/' )
+
+#    if [ "$1" == list ]; then
+#	echo "USER:               $USER1"
+#	echo "NAME:               $HOST_ID"
+#	# show MAC address and private IP address
+#	echo "MAC ADDRESS:        ${MAC_ADDRESS[$i]}"
+#	echo "PRIVATE IP ADDRESS: ${PRIVATE_IP[$i]}"
+#    fi
 
     # show global IP address
 
-    if [ $BASH_VERSION = 4 ]; then
-	# bash ver.4
-	# VCABLE_GIP is a global parameter gotten in ipassociation_list
-	# get global IP address from VCABLE_GIP
-	if [ "$1" == list ]; then
-	    echo "GLOBAL IP ADDRESS:  ${VCABLE_GIP[${VCABLE_ID[$i]}]}"
-	    echo
-	fi
-	# link vcable and global IP address
-	GIP=${VCABLE_GIP[${VCABLE_ID[$i]}]}
+#    if [ $BASH_VERSION = 4 ]; then
+#	# bash ver.4
+#	# VCABLE_GIP is a global parameter gotten in ipassociation_list
+#	# get global IP address from VCABLE_GIP
+#	if [ "$1" == list ]; then
+#	    echo "GLOBAL IP ADDRESS:  ${VCABLE_GIP[${VCABLE_ID[$i]}]}"
+#	    echo "GLOBAL IP ADDRESS:  ${VCABLE_GIP[${VCABLE_ID[$i]}]}"
+#	    echo
+#	fi
+
+    # link vcable and global IP address
+#	GIP=${VCABLE_GIP[${VCABLE_ID[$i]}]}
 	# set global IP address and HOST name into HOST_GIP
 	# to use ipreservation_list
-	if [ "$GIP" != "" ]; then
-	    GIP_HOST[$GIP]=$HOST_ID
-	fi
-    else
+#	if [ "$GIP" != "" ]; then
+#	    GIP_HOST[$GIP]=$HOST_ID
+#	    printf "$HOST_NAME\n"
+#	    printf "${MAC_ADDRESS[$i]}  ${PRIVATE_IP[$i]}\n"
+#	fi
+#    else
 	# bash ver.3
 	for ((m = 0 ; m < ${#VCABLE_INDEX[@]}; ++m )) do
 	    if [ ${VCABLE_ID[$i]} = ${VCABLE_INDEX[$m]} ]; then
 		if [ "$1" == list ]; then
-		    echo "GLOBAL IP ADDRESS:  ${GLOBAL_IP_INDEX[$m]}"
+		    printf "$HOST_NAME\n"
+		    printf "${MAC_ADDRESS[$i]} "
+		    printf "${PRIVATE_IP[$i]}\t"
+		    printf "${GLOBAL_IP_INDEX[$m]} "
+		    printf "\n"
 		    echo
 		fi
 		HOST_INDEX[$m]=$HOST_ID
 		break
 	    fi
 	done
-	fi
+#	fi
 	done
-    rm $INSTANCE
+	    rm $INSTANCE
 }
 
 ipassociation() {
@@ -705,7 +718,7 @@ ipreservation_list() {
     echo -e "IP ADDRESS\tHOST UUID"
     if [ $BASH_VERSION = 4 ]; then
 	# bash ver.4
-	# show Global IP Address with GIP_HOST from instance_list
+	# show Global IP Address with GIP_HOST from instances_list
 	for ((i = 0 ; i < ${#GLOBAL_IP[@]}; ++i )) do
 	echo -e "${GLOBAL_IP[$i]}\t${GIP_HOST[${GLOBAL_IP[$i]}]}"
 
@@ -1405,7 +1418,8 @@ case "$ARG" in
 	 imagelist      -- show OS and disk size template
 	 launchplan     -- make an instance for temporary
 	 list           -- list all instance,ipreservation,storage volume
-	 delete         -- delete objects except JCS,DBCS auto making objects.
+	 delete         -- delete objects except JCS,DBCS auto making objects
+	 config         -- make new configuration or change default setting
 EOF
 	exit 1
 esac
