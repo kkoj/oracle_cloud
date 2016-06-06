@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-06-05 01:58:19 katsu> 
+## Time-stamp: <2016-06-07 01:31:59 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -23,9 +23,9 @@ ADJ_TIME=9000
 DIRNAME=`dirname $0`
 . $DIRNAME/opc_init.sh
 
-# Bash 4 has Associative array.If bash is ver4 on this environment,
+# Bash 4 has Associative array.
 # But Mac OS X has bash ver.3. So we do not use associative array.
-#
+
 declare -a HOST_INDEX           # host name(uuid) in instance
 declare -a VCABLE_INDEX         # instance and ipassociation has it.
 declare -a GLOBAL_IP_INDEX      # ipassociation and ipreservation have it.
@@ -154,14 +154,16 @@ delete(){
 	    read ans2
 	    case $ans2 in
 		1 | [Yy]* )
-		    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i )) do
-		    instance_delete ${INSTANCE_ID[$i]}
+		    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i ))
+		    do
+			instance_delete ${INSTANCE_ID[$i]}
 		    done
 		    ;;
 		2 | [Oo]* )
-		    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i )) do
-		    USER1=$(echo ${INSTANCE_ID[$i]} \
-			| sed -n -e 's/\/[^/]*\/\([^/]*\)\/.*/\1/p')
+		    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i ))
+		    do
+			USER1=$(echo ${INSTANCE_ID[$i]} \
+			       | sed -n -e 's/\/[^/]*\/\([^/]*\)\/.*/\1/p')
 		    if [ "$USER1" = "$OPC_ACCOUNT" ]; then
 			instance_delete ${INSTANCE_ID[$i]}
 		    fi
@@ -190,17 +192,19 @@ delete(){
 	    case $ans2 in
 		1 | [Yy]* )
 		    echo 
-		    for ((i = 0 ; i < ${#STORAGE_VOL[@]}; ++i )) do
-		    storage_volume_delete ${STORAGE_VOL[$i]}
+		    for ((i = 0 ; i < ${#STORAGE_VOL[@]}; ++i ))
+		    do
+			storage_volume_delete ${STORAGE_VOL[$i]}
 		    done
 		    ;;
 		2 | [Oo]* )
-		    for ((i = 0 ; i < ${#STORAGE_VOL[@]};++i )) do
-		    USER1=$(echo ${STORAGE_VOL[$i]} \
-			| sed -n -e 's/[^/]*\/\([^/]*\)\/.*/\1/p')
-		    if [ "$USER1" = "$OPC_ACCOUNT" ]; then
-			storage_volume_delete ${STORAGE_VOL[$i]}
-		    fi
+		    for ((i = 0 ; i < ${#STORAGE_VOL[@]};++i ))
+		    do
+			USER1=$(echo ${STORAGE_VOL[$i]} \
+			       | sed -n -e 's/[^/]*\/\([^/]*\)\/.*/\1/p')
+			if [ "$USER1" = "$OPC_ACCOUNT" ]; then
+			    storage_volume_delete ${STORAGE_VOL[$i]}
+			fi
 		    done
 		    ;;
 		*)
@@ -224,8 +228,9 @@ delete(){
 	    echo "global address that is not used"
 	    echo "----------------------------------"
 	    echo -e "IP ADDRESS\tUNUSED OBJECT NAME"
-	    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[$i]};++i )) do
-	    echo -e "${UNUSED_GLOBAL_IP[$i]}\t${UNUSED_GIP_NAME[$i]}"
+	    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[$i]};++i ))
+	    do
+		echo -e "${UNUSED_GLOBAL_IP[$i]}\t${UNUSED_GIP_NAME[$i]}"
 	    done
 	    echo "----------------------------------"
 	    echo "Do you want to delete these addresses?"
@@ -233,14 +238,16 @@ delete(){
 	    read ans2
 	    case $ans2 in
 		1 | [Yy]* )
-		    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[@]};++i )) do
-		    ipreservation_delete ${UNUSED_GIP_NAME[$i]}
+		    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[@]};++i ))
+		    do
+			ipreservation_delete ${UNUSED_GIP_NAME[$i]}
 		    done
 		    ;;
 		2 | [Oo]* )
-		    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[@]};++i )) do
-		    USER1=$(echo ${UNUSED_GIP_NAME[$i]} \
-			| sed -n -e 's/\([^/]*\)\/.*/\1/p')
+		    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[@]};++i ))
+		    do
+			USER1=$(echo ${UNUSED_GIP_NAME[$i]} \
+			       | sed -n -e 's/\([^/]*\)\/.*/\1/p')
 		    if [ "$USER1" = "$OPC_ACCOUNT" ]; then
 			ipreservation_delete ${UNUSED_GIP_NAME[$i]}
 		    fi
@@ -270,63 +277,73 @@ delete(){
 	    case $ans2 in
 		1 | [Yy]* )
 		    # instance
-                    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i )) do
-                    instance_delete ${INSTANCE_ID[$i]}
+                    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i ))
+		    do
+			instance_delete ${INSTANCE_ID[$i]}
                     done
 		    # storage	
-		    for ((i = 0 ; i < ${#STORAGE_VOL[@]}; ++i )) do
-		    storage_volume_delete ${STORAGE_VOL[$i]}
+		    for ((i = 0 ; i < ${#STORAGE_VOL[@]}; ++i ))
+		    do
+			storage_volume_delete ${STORAGE_VOL[$i]}
 		    done
 		    # global IP address
-		    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[@]};++i )) do
-		    ipreservation_delete ${UNUSED_GIP_NAME[$i]}
+		    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[@]};++i ))
+		    do
+			ipreservation_delete ${UNUSED_GIP_NAME[$i]}
 		    done
 		    # secrule
-		    for ((i = 0 ; i < ${#SECRULE[@]}; ++i )) do
-		    secrule_delete ${SECRULE[$i]}
+		    for ((i = 0 ; i < ${#SECRULE[@]}; ++i ))
+		    do
+			secrule_delete ${SECRULE[$i]}
 		    done
 		    if [ "$DEFAULT_SECRULE" = 0 ];then
-		    secrule_default_create
+			secrule_default_create
 		    fi
 		    # seclist
-		    for ((i = 0 ; i < ${#SECLIST[@]}; ++i )) do
-		    seclist_delete ${SECLIST[$i]}
+		    for ((i = 0 ; i < ${#SECLIST[@]}; ++i ))
+		    do
+			seclist_delete ${SECLIST[$i]}
                     done
 		    if [ "DEFAULT_SECLIST" = 0 ];then
 		    seclist_create default
 		    fi
 		    # sshkey
-		    for ((i = 0 ; i < ${#SSHKEY[@]}; ++i )) do
-		    sshkey_delete ${SSHKEY[$i]}
+		    for ((i = 0 ; i < ${#SSHKEY[@]}; ++i ))
+		    do
+			sshkey_delete ${SSHKEY[$i]}
 		    done
 		    ;;
 		2 | [Oo]* )
 		    # instance
-                    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i )) do
-                    USER1=$(echo ${INSTANCE_ID[$i]} \
-                        | sed -n -e 's/\/[^/]*\/\([^/]*\)\/.*/\1/p')
-                    if [ "$USER1" = "$OPC_ACCOUNT" ]; then
-                        instance_delete ${INSTANCE_ID[$i]}
-                    fi
+                    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i ))
+		    do
+			USER1=$(echo ${INSTANCE_ID[$i]} \
+			       | sed -n -e 's/\/[^/]*\/\([^/]*\)\/.*/\1/p')
+			if [ "$USER1" = "$OPC_ACCOUNT" ]; then
+                            instance_delete ${INSTANCE_ID[$i]}
+			fi
                     done
 		    # storage
-	       	    for ((i = 0 ; i < ${#STORAGE_VOL[@]};++i )) do
-                    USER1=$(echo ${STORAGE_VOL[$i]} \
-                        | sed -n -e 's/[^/]*\/\([^/]*\)\/.*/\1/p')
-		    if [ "$USER1" = "$OPC_ACCOUNT" ]; then
-			storage_volume_delete ${STORAGE_VOL[$i]}
-		    fi
+	       	    for ((i = 0 ; i < ${#STORAGE_VOL[@]};++i ))
+		    do
+			USER1=$(echo ${STORAGE_VOL[$i]} \
+			       | sed -n -e 's/[^/]*\/\([^/]*\)\/.*/\1/p')
+			if [ "$USER1" = "$OPC_ACCOUNT" ]; then
+			    storage_volume_delete ${STORAGE_VOL[$i]}
+			fi
 		    done
 		    # global IP address
-                    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[@]};++i )) do
-                    USER1=$(echo ${UNUSED_GIP_NAME[$i]} \
-                        | sed -n -e 's/\([^/]*\)\/.*/\1/p')
+                    for ((i = 0 ; i < ${#UNUSED_GLOBAL_IP[@]};++i ))
+		    do
+			USER1=$(echo ${UNUSED_GIP_NAME[$i]} \
+				       | sed -n -e 's/\([^/]*\)\/.*/\1/p')
                     if [ "$USER1" = "$OPC_ACCOUNT" ]; then
                         ipreservation_delete ${UNUSED_GIP_NAME[$i]}
                     fi
                     done
 		    # secrule
-		    for ((i = 0 ; i < ${#SECRULE[@]}; ++i )) do
+		    for ((i = 0 ; i < ${#SECRULE[@]}; ++i ))
+		    do
                     USER1=$(echo ${SECRULE[$i]} \
                         | sed -n -e 's/\([^/]*\)\/.*/\1/p')
                     if [ "$USER1" = "$OPC_ACCOUNT" ]; then
@@ -337,7 +354,8 @@ delete(){
 		    secrule_default_create
 		    fi
 		    # seclist
-		    for ((i = 0 ; i < ${#SECLIST[@]}; ++i )) do
+		    for ((i = 0 ; i < ${#SECLIST[@]}; ++i ))
+		    do
                     USER1=$(echo ${SECLIST[$i]} \
                         | sed -n -e 's/\([^/]*\)\/.*/\1/p')
                     if [ "$USER1" = "$OPC_ACCOUNT" ]; then
@@ -348,7 +366,8 @@ delete(){
 		    seclist_create default
 		    fi
 		    # sshkey
-		    for ((i = 0 ; i < ${#SSHKEY[@]}; ++i )) do
+		    for ((i = 0 ; i < ${#SSHKEY[@]}; ++i ))
+		    do
                     USER1=$(echo ${SSHKEY[$i]} \
                         | sed -n -e 's/\([^/]*\)\/.*/\1/p')
                     if [ "$USER1" = "$OPC_ACCOUNT" ]; then
@@ -376,7 +395,8 @@ imagelist_info() {
     IMAGEDESC=($(sed -n -e 's/.*\"description\": \(.*\),/\1/p' $IMAGELIST ))
     echo "         SHAPE                      \"DESCRIPTION\""
     echo "-------------------------------------------------------------"
-    for ((i = 0 ; i < ${#IMAGEDESC[@]};++i )) do
+    for ((i = 0 ; i < ${#IMAGEDESC[@]};++i ))
+    do
     printf "%-35s %s\n" ${IMAGENAME[$i]} ${IMAGEDESC[$i]}
     done
     IFS=$_IFS
@@ -439,8 +459,7 @@ instances_list() {
 	echo "============================================================="
 	echo "                    ### INSTANCE ###"
 	echo "============================================================="
-	echo
-	echo "Host             MAC address        Private IP address  Global IP address"
+	echo "User             Host         MAC                Private IP      Global IP"
     fi
 
     # sed:1 pick up object "name"
@@ -449,10 +468,10 @@ instances_list() {
 
     # get HOST uuid
     INSTANCE_ID=($($CURL -X GET -H "Cookie:$COMPUTE_COOKIE" \
-			 $IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ | tee $INSTANCE \
-			  | sed -n -e 's/.*\"name\".*\(\/Compute-.*\)\".*/\1/p' \
-			  | sed -e 's/\(\/Compute-.*\/.*\/.*\/.*\)\/.*/\1/' | uniq \
-			  | sed -n -e '/[0-9a-z]\{8\}-[0-9a-z]\{4\}-.*-.*-[0-9a-z]\{12\}/p' ))
+	 $IAAS_URL/instance/Compute-$OPC_DOMAIN/ | $JQ | tee $INSTANCE \
+	  | sed -n -e 's/.*\"name\".*\(\/Compute-.*\)\".*/\1/p' \
+	  | sed -e 's/\(\/Compute-.*\/.*\/.*\/.*\)\/.*/\1/' | uniq \
+	  | sed -n -e '/[0-9a-z]\{8\}-[0-9a-z]\{4\}-.*-.*-[0-9a-z]\{12\}/p' ))
     
     # get eth0 MAC address
     MAC_ADDRESS=($(grep -A1 '\"address\":' $INSTANCE \
@@ -471,22 +490,24 @@ instances_list() {
 
     # show information
     # show account name and host name
-    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i )) do
+    for ((i = 0 ; i < ${#INSTANCE_ID[@]};++i ))
+    do
 	USER1=$( echo ${INSTANCE_ID[$i]} \
-		       | sed -e "s/\/Compute-$OPC_DOMAIN\/\([^/]*\).*/\1/" )
+	       | sed -e "s/\/Compute-$OPC_DOMAIN\/\([^/]*\).*/\1/" )
 	HOST_ID=$( echo ${INSTANCE_ID[$i]} \
-			 | sed -e "s/\/Compute-$OPC_DOMAIN\/[^/]*\(.*\)/\1/" \
-			       -e 's/^\///' )
+		 | sed -e "s/\/Compute-$OPC_DOMAIN\/[^/]*\(.*\)/\1/" \
+		       -e 's/^\///' )
 	HOST_NAME=$( echo $HOST_ID | sed -e 's/\(.*\)[/].*/\1/' )
 
-
-	for ((m = 0 ; m < ${#VCABLE_INDEX[@]}; ++m )) do
+	for ((m = 0 ; m < ${#VCABLE_INDEX[@]}; ++m ))
+	do
 	    if [ ${VCABLE_ID[$i]} = ${VCABLE_INDEX[$m]} ]; then
 		if [ "$1" == list ]; then
-		    printf "%-16s " $HOST_NAME
-		    printf "%17s" ${MAC_ADDRESS[$i]}
-		    printf "%17s" ${PRIVATE_IP[$i]}
-		    printf "%17s" ${GLOBAL_IP_INDEX[$m]}
+		    printf "%-16s " $USER1
+		    printf "%-12s " $HOST_NAME
+		    printf "%17s  " ${MAC_ADDRESS[$i]}
+		    printf "%-16s" ${PRIVATE_IP[$i]}
+		    printf "%-16s" ${GLOBAL_IP_INDEX[$m]}
 		    printf "\n"
 		fi
 		HOST_INDEX[$m]=$HOST_ID
@@ -547,7 +568,8 @@ ipassociation_list() {
     # "${#GLOBAL_IP[@]}" is total number of GLOBAL_IP 
 
     # make VCABLE_INDEX[j] and GLOBAL_IP_INDEX[j] in same index row
-    for ((n = 0 ; n < ${#GLOBAL_IP1[@]}; ++n )) do
+    for ((n = 0 ; n < ${#GLOBAL_IP1[@]}; ++n ))
+    do
 	VCABLE_INDEX[${#VCABLE_INDEX[@]}]=${VCABLE[$n]}
 	GLOBAL_IP_INDEX[${#GLOBAL_IP_INDEX[@]}]=${GLOBAL_IP1[$n]}
     done
@@ -649,10 +671,12 @@ ipreservation_list() {
     echo "============================================================="
     echo "         ### GLOBAL IP ADDRESS (IP RESERVATION) ###"
     echo "============================================================="
-    for ((m = 0 ; m < ${#USER_ID[@]};++m )) do
-    echo
-    # show ACCOUNT name
-    echo "USER_ID: ${USER_ID[$m]}"
+    echo -e "User             IP ADDRESS      Host"
+    # pick up every user's global IP address
+
+    for ((m = 0 ; m < ${#USER_ID[@]};++m ))
+    do
+
     GLOBAL_IP=($($CURL -X GET \
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
@@ -663,42 +687,47 @@ ipreservation_list() {
 	-e "s/.*\"name\": \"\/Compute-$OPC_DOMAIN\/\(.*\)\",/\1/p" \
 	$IP_RESERV-${USER_ID[$m]} ))
 
-    echo "-------------------------------------------------------------"
-    echo -e "IP ADDRESS\tHOST UUID"
-
     # GLOBAL_IP is from ipreservation
     # GLOBAL_IP_INDEX is from ipassociation
 
-    # get unused Globa IP address
+    # get unused Global IP address
 
+    # if GLOBAL_IP_INDEX is not on ipassociation, all GLOBAL_IP must be
+    # unused IP address 
     if [ "${#GLOBAL_IP_INDEX[@]}" == 0 ]; then
-	for ((k = 0 ; k < ${#GLOBAL_IP[@]}; ++k )) do
+	for ((k = 0 ; k < ${#GLOBAL_IP[@]}; ++k ))
+	do
 	    echo "${GLOBAL_IP[$k]}"
 	    # pickup no use IP address using in delete()
 	    UNUSED_GLOBAL_IP[${#UNUSED_GLOBAL_IP[@]}]=${GLOBAL_IP[$k]}
 	    UNUSED_GIP_NAME[${#UNUSED_GIP_NAME[@]}]=${RESERVE_NAME[$k]}
 	done
+    else
+	for ((i = 0 ; i < ${#GLOBAL_IP[@]}; ++i ))
+	do
+	    for ((j = 0 ; j < ${#GLOBAL_IP_INDEX[@]}; ++j ))
+	    do
+		if [ "${GLOBAL_IP[$i]}" = "${GLOBAL_IP_INDEX[$j]}" ]; then
+		    HOST_NAME=$( echo ${HOST_INDEX[$j]} | sed -e 's/\(.*\)[/].*/\1/' )
+		    printf "%-16s " ${USER_ID[$m]}
+		    printf "%-16s" ${GLOBAL_IP_INDEX[$j]}
+		    printf "%-12s " $HOST_NAME
+		    printf "\n"
+		    break
+		elif [ $(($j+1)) = "${#GLOBAL_IP_INDEX[@]}" ];then
+		    # it must be remaining of global IP address without HOST
+		    printf "%-16s " ${USER_ID[$m]}
+		    printf "%-16s" ${GLOBAL_IP[$i]}
+		    printf "\n"
+		    # pickup no use IP address using in delete()
+		    UNUSED_GLOBAL_IP[${#UNUSED_GLOBAL_IP[@]}]="${GLOBAL_IP[$i]}"
+		    UNUSED_GIP_NAME[${#UNUSED_GIP_NAME[@]}]="${RESERVE_NAME[$i]}"
+		fi
+            done
+	done
+	rm $IP_RESERV-${USER_ID[$m]}
     fi
-
-     for ((i = 0 ; i < ${#GLOBAL_IP[@]}; ++i )) do # 3
-	 for ((j = 0 ; j < ${#GLOBAL_IP_INDEX[@]}; ++j )) do #4
-	     if [ "${GLOBAL_IP[$i]}" = "${GLOBAL_IP_INDEX[$j]}" ]; then
-		 echo -e "${GLOBAL_IP_INDEX[$j]}\t${HOST_INDEX[$j]}"
-		 break
-		 # it must be remaining of global IP address without HOST
-	     elif [ "$j" = "${#GLOBAL_IP_INDEX[@]}" ];then
-		 echo -e "${GLOBAL_IP[$i]}"
-		 # pickup no use IP address using in delete()
-		 GIP="${GLOBAL_IP[$i]}"
-		 GIP_NAME="${RESERVE_NAME[$i]}"
-		 UNUSED_GLOBAL_IP[${#UNUSED_GLOBAL_IP[@]}]=$GIP
-		 UNUSED_GIP_NAME[${#UNUSED_GIP_NAME[@]}]=$GIP_NAME
-	     fi
-         done
-      done
     done
-	     echo "-------------------------------------------------------------"
-     rm $IP_RESERV-${USER_ID[$m]}    
 }
 
 launchplan() {
@@ -720,7 +749,7 @@ launchplan() {
              \"name\": \"/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$HOST_NAME\",\
              \"label\": \"$HOST_NAME\",\
              \"attributes\": {\"userdata\": \
-              {\"corente-tunnel-args\": \"--local-tunnel-address=172.16.21.2 --csg-hostname=csg.compute-gse00000626.oraclecloud.internal --csg-tunnel-address=172.16.254.1 --onprem-subnets=172.16.20.0/24,192.168.0.0/24\"} },\
+              {\"corente-tunnel-args\": \"--local-tunnel-address=172.16.21.3 --csg-hostname=csg.compute-gse00000626.oraclecloud.internal --csg-tunnel-address=172.16.254.1 --onprem-subnets=192.168.0.0/24\"} },\
              \"networking\":{\"eth0\": \
               {\"dns\": [\"$HOST_NAME\"], \
                \"seclists\": [\"/Compute-$OPC_DOMAIN/default/default\"], \
@@ -731,7 +760,7 @@ launchplan() {
     STATUS=$(echo $RET | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
 
     if [ "$STATUS" = 201 ]; then
-	echo $RET
+#	echo $RET
 	echo "$HOST_NAME created"
     else
 	echo $RET
@@ -908,7 +937,8 @@ seclist_list() {
     echo
     echo SECLIST
     echo "-------------------------------------"
-    for (( i=0 ; i < ${#SECLIST[@]}; i++ )) do
+    for (( i=0 ; i < ${#SECLIST[@]}; i++ ))
+    do
     echo "${SECLIST[$i]}"
     if [ "${SECLIST[$i]}" = 'default/default' ]; then
 	DEFAULT_SECLIST=1
@@ -932,7 +962,8 @@ secrule_list() {
     echo
     echo SECRULE
     echo "-------------------------------------"
-    for (( i=0 ; i < ${#SECRULE[@]}; i++ )) do
+    for (( i=0 ; i < ${#SECRULE[@]}; i++ ))
+    do
     echo "${SECRULE[$i]}"
     if [ "${SECRULE[$i]}" = 'DefaultPublicSSHAccess' ]; then
 	DEFAULT_SECRULE=1
@@ -1018,7 +1049,8 @@ shape() {
     echo -e "SHAPE\t  CORE\t oCPU\t RAM(GB)"
     echo "----------------------------------------"
 
-    for ((i = 0 ; i < ${#SHAPE[@]};++i )) do
+    for ((i = 0 ; i < ${#SHAPE[@]};++i ))
+    do
     RAM_GB=$(( ${RAM[$i]} / 1024 ))
     OCPU=$((${CORE[$i]} / 2))
 
@@ -1066,7 +1098,8 @@ sshkey_list(){
     echo
     echo SSHKEY
     echo "-------------------------------------"
-    for (( i=0 ; i < ${#SSHKEY[@]}; i++ )) do
+    for (( i=0 ; i < ${#SSHKEY[@]}; i++ ))
+    do
     echo "${SSHKEY[$i]}"
     done
     echo "-------------------------------------"
@@ -1157,7 +1190,8 @@ storage_volume_list() {
 	-H "Accept: application/oracle-compute-v3+json" \
 	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/ \
 	| $JQ | sed -n -e 's/.*\"name\":[^/]*\/\(Compute-.*\)\",/\1/p' ))
-    for ((i = 0 ; i < ${#STORAGE_VOL[@]}; ++i )) do
+    for ((i = 0 ; i < ${#STORAGE_VOL[@]}; ++i ))
+    do
     echo ${STORAGE_VOL[$i]}
     done
 }
