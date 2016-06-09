@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-06-07 01:31:59 katsu> 
+## Time-stamp: <2016-06-10 02:59:04 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -27,8 +27,8 @@ DIRNAME=`dirname $0`
 # But Mac OS X has bash ver.3. So we do not use associative array.
 
 declare -a HOST_INDEX           # host name(uuid) in instance
-declare -a VCABLE_INDEX         # instance and ipassociation has it.
-declare -a GLOBAL_IP_INDEX      # ipassociation and ipreservation have it.
+declare -a VCABLE_INDEX         # vcable (uuid) in instance and ipassociation
+declare -a GLOBAL_IP_INDEX      # Global IPs in ipassociation
 declare -a USER_ID              # account name
 declare -a UNUSED_GIP_NAME      # unused IP address name on ipreservation
 declare -a UNUSED_GLOBAL_IP     # unused IP address on ipreservation
@@ -456,10 +456,16 @@ instances_list() {
     if [ "$1" == list ]; then
 	echo
 	echo "          OBJECT list for the Domain $OPC_DOMAIN"
-	echo "============================================================="
+	echo "-------------------------------------------------------------"
 	echo "                    ### INSTANCE ###"
-	echo "============================================================="
-	echo "User             Host         MAC                Private IP      Global IP"
+	echo "-------------------------------------------------------------"
+	if [ "$1" == list ]; then
+		 echo "Host              Status  "\
+		      "Private IP      Global IP"
+	     elif [ "$1" == v ]; then
+		 echo "User             Host         MAC               "\
+		      "Private IP      Global IP"
+	     fi
     fi
 
     # sed:1 pick up object "name"
@@ -484,6 +490,9 @@ instances_list() {
     VCABLE_ID=($(sed -n -e 's/.*\"vcable_id\".*\/.*\/.*\/\(.*\)\",/\1/p' \
 		     $INSTANCE ))
 
+    STATE=($(sed -n -e 's/.*\"state\": "\(.*\)\",/\1/p' $INSTANCE))
+    SHAPE=($(sed -n -e 's/.*\"shape\": "\(.*\)\",/\1/p' $INSTANCE))
+
     # Now INSTANCE_ID,MAC_ADDRESS,PRIVATE_IP,VCABLE_ID has same index in row.
     # Because they are in same block in $INSTANCE file.
     # Next "for loop" use $i to pick up the factor.
@@ -503,6 +512,12 @@ instances_list() {
 	do
 	    if [ ${VCABLE_ID[$i]} = ${VCABLE_INDEX[$m]} ]; then
 		if [ "$1" == list ]; then
+		    printf "%-16s " $HOST_NAME
+		    printf "%8s  " $STATE
+		    printf "%-16s" ${PRIVATE_IP[$i]}
+		    printf "%-16s" ${GLOBAL_IP_INDEX[$m]}
+		    printf "\n"
+		elif [ "$1" == v ]; then
 		    printf "%-16s " $USER1
 		    printf "%-12s " $HOST_NAME
 		    printf "%17s  " ${MAC_ADDRESS[$i]}
@@ -668,15 +683,14 @@ ipreservation_list() {
 
     # get the object from all users account
     # objects into $USER_ID[$i]/$OBJECT[$j]
-    echo "============================================================="
+    echo "-------------------------------------------------------------"
     echo "         ### GLOBAL IP ADDRESS (IP RESERVATION) ###"
-    echo "============================================================="
+    echo "-------------------------------------------------------------"
     echo -e "User             IP ADDRESS      Host"
     # pick up every user's global IP address
 
     for ((m = 0 ; m < ${#USER_ID[@]};++m ))
     do
-
     GLOBAL_IP=($($CURL -X GET \
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
@@ -692,8 +706,8 @@ ipreservation_list() {
 
     # get unused Global IP address
 
-    # if GLOBAL_IP_INDEX is not on ipassociation, all GLOBAL_IP must be
-    # unused IP address 
+    # if there is no global IP address on ipassociation,
+    # all GLOBAL_IP on ipreservation must be unused.
     if [ "${#GLOBAL_IP_INDEX[@]}" == 0 ]; then
 	for ((k = 0 ; k < ${#GLOBAL_IP[@]}; ++k ))
 	do
@@ -708,7 +722,8 @@ ipreservation_list() {
 	    for ((j = 0 ; j < ${#GLOBAL_IP_INDEX[@]}; ++j ))
 	    do
 		if [ "${GLOBAL_IP[$i]}" = "${GLOBAL_IP_INDEX[$j]}" ]; then
-		    HOST_NAME=$( echo ${HOST_INDEX[$j]} | sed -e 's/\(.*\)[/].*/\1/' )
+		    HOST_NAME=$( echo ${HOST_INDEX[$j]} \
+				       | sed -e 's/\(.*\)[/].*/\1/' )
 		    printf "%-16s " ${USER_ID[$m]}
 		    printf "%-16s" ${GLOBAL_IP_INDEX[$j]}
 		    printf "%-12s " $HOST_NAME
@@ -827,7 +842,6 @@ orchestration_container(){
 }
 
 orchestration_delete(){
-CURL="curl -v"
     O_FILE=/tmp/orchestration-$OPC_DOMAIN
     if [ "$1" = "" ]; then
 	echo "Which orchestration do you want to delete ?"
@@ -1182,18 +1196,28 @@ storage_volume_info() {
 }
 
 storage_volume_list() {
-    echo
-    echo "============================================================="
+    storage_vol_list=/tmp/storage_vol_list-$OPC_DOMAIN
+    echo "-------------------------------------------------------------"
     echo "                   ### STORAGE VOLUME ###"
-    echo "============================================================="
-    STORAGE_VOL=($($CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
+    echo "-------------------------------------------------------------"
+    name=($($CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	-H "Accept: application/oracle-compute-v3+json" \
 	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/ \
-	| $JQ | sed -n -e 's/.*\"name\":[^/]*\/\(Compute-.*\)\",/\1/p' ))
-    for ((i = 0 ; i < ${#STORAGE_VOL[@]}; ++i ))
+ 	| $JQ \
+	| tee $storage_vol_list \
+	| sed -n -e 's/.*\"name\":.*\/\(.*\)\",/\1/p' ))
+
+    status=($(sed -n -e 's/.*\"status\": \"\(.*\)\",/\1/p' $storage_vol_list))
+    size=($(sed -n -e 's/.*\"size\": \"\(.*\)\",/\1/p' $storage_vol_list))
+    for ((i = 0 ; i < ${#name[@]}; ++i ))
     do
-    echo ${STORAGE_VOL[$i]}
+	printf "%-16s" ${name[$i]}
+	printf "%8s " ${status[$i]}
+	printf "%8s " "$((${size[$i]} / 1024 ** 3 ))" # show Byte to GB
+	printf GB
+	printf "\n"
     done
+    rm $storage_vol_list
 }
 
 storage_attachment() {
