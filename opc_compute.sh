@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-06-16 01:01:58 katsu> 
+## Time-stamp: <2016-06-18 01:35:10 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -141,7 +141,7 @@ delete(){
 	    # delete Instances
 	    get_cookie
 	    ipassociation_list
-	    instances_list list
+	    instances_list v
 	    if [ -z ${INSTANCE_UUID[0]} ]; then
 		echo
 		echo "There is no instance."
@@ -179,7 +179,7 @@ delete(){
 	    # delete Storage Volume
 	    get_cookie
 	    storage_volume_list
-	    if [ -z ${STORAGE_VOL[0]} ]; then
+	    if [ -z ${vol_name[0]} ]; then
 		echo
 		echo "There is no Storage Volume."
 		echo
@@ -193,18 +193,18 @@ delete(){
 	    case $ans2 in
 		1 | [Yy]* )
 		    echo 
-		    for ((i = 0 ; i < ${#STORAGE_VOL[@]}; ++i ))
+		    for ((i = 0 ; i < ${#vol_name[@]}; ++i ))
 		    do
-			storage_volume_delete ${STORAGE_VOL[$i]}
+			storage_volume_delete ${vol_name[$i]}
 		    done
 		    ;;
 		2 | [Oo]* )
-		    for ((i = 0 ; i < ${#STORAGE_VOL[@]};++i ))
+		    for ((i = 0 ; i < ${#vol_name[@]};++i ))
 		    do
-			user1=$(echo ${STORAGE_VOL[$i]} \
+			user1=$(echo ${vol_name[$i]} \
 			       | sed -n -e 's/[^/]*\/\([^/]*\)\/.*/\1/p')
 			if [ "$user1" = "$OPC_ACCOUNT" ]; then
-			    storage_volume_delete ${STORAGE_VOL[$i]}
+			    storage_volume_delete ${vol_name[$i]}
 			fi
 		    done
 		    ;;
@@ -283,9 +283,9 @@ delete(){
 			instance_delete ${INSTANCE_UUID[$i]}
                     done
 		    # storage	
-		    for ((i = 0 ; i < ${#STORAGE_VOL[@]}; ++i ))
+		    for ((i = 0 ; i < ${#vol_name[@]}; ++i ))
 		    do
-			storage_volume_delete ${STORAGE_VOL[$i]}
+			storage_volume_delete ${vol_name[$i]}
 		    done
 		    # global IP address
 		    for ((i = 0 ; i < ${#GIP_FREE_RESERV[@]};++i ))
@@ -325,12 +325,12 @@ delete(){
 			fi
                     done
 		    # storage
-	       	    for ((i = 0 ; i < ${#STORAGE_VOL[@]};++i ))
+	       	    for ((i = 0 ; i < ${#vol_name[@]};++i ))
 		    do
-			user1=$(echo ${STORAGE_VOL[$i]} \
+			user1=$(echo ${vol_name[$i]} \
 			       | sed -n -e 's/[^/]*\/\([^/]*\)\/.*/\1/p')
 			if [ "$user1" = "$OPC_ACCOUNT" ]; then
-			    storage_volume_delete ${STORAGE_VOL[$i]}
+			    storage_volume_delete ${vol_name[$i]}
 			fi
 		    done
 		    # global IP address
@@ -729,7 +729,7 @@ ipreservation_list() {
 	    $IAAS_URL/ip/reservation/Compute-$OPC_DOMAIN/${user_id_re[$m]}/ \
 	    | $JQ | tee $ip_reserv-${user_id_re[$m]} \
 	    | sed -n -e 's/.*\"ip\": \"\(.*\)\",/\1/p' ))
-	reserve_name=($(sed -n \
+	resv_name=($(sed -n \
 	    -e "s/.*\"name\": \"\/Compute-$OPC_DOMAIN\/\(.*\)\",/\1/p" \
 	    $ip_reserv-${user_id_re[$m]} ))
 
@@ -746,7 +746,7 @@ ipreservation_list() {
 	    echo "${gip_reserv[$k]}"
 	    # pickup no use IP address using in delete()
 	    GIP_FREE_RESERV[${#GIP_FREE_RESERV[@]}]=${gip_reserv[$k]}
-	    GIP_FREE_UUID_RE[${#GIP_FREE_UUID_RE[@]}]=${reserve_name[$k]}
+	    GIP_FREE_UUID_RE[${#GIP_FREE_UUID_RE[@]}]=${resv_name[$k]}
 	done
     else
 	for ((i = 0 ; i < ${#gip_reserv[@]}; ++i ))
@@ -770,7 +770,7 @@ ipreservation_list() {
 		    printf "\n"
 		    # pickup no use IP address using in delete()
 		    GIP_FREE_RESERV[${#GIP_FREE_RESERV[@]}]="${gip_reserv[$i]}"
-		    GIP_FREE_UUID_RE[${#GIP_FREE_UUID_RE[@]}]="${reserve_name[$i]}"
+		    GIP_FREE_UUID_RE[${#GIP_FREE_UUID_RE[@]}]="${resv_name[$i]}"
 		fi
             done
 	done
@@ -809,7 +809,6 @@ launchplan() {
     status=$(echo $ret | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
 
     if [ "$status" = 201 ]; then
-#	echo $ret
 	echo "$host_name created"
     else
 	echo $ret
@@ -898,8 +897,6 @@ orchestration_delete(){
     else
 	echo $ret
     fi
-
-    #            -H "Accept: application/oracle-compute-v3+json" \
 }
 
 role() {
@@ -1232,7 +1229,7 @@ storage_volume_list() {
     echo "-------------------------------------------------------------"
     echo "                   ### STORAGE VOLUME ###"
     echo "-------------------------------------------------------------"
-    name=($($CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
+    vol_name=($($CURL -X GET -H "Cookie: $COMPUTE_COOKIE" \
 	-H "Accept: application/oracle-compute-v3+json" \
 	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/ \
  	| $JQ \
@@ -1241,9 +1238,9 @@ storage_volume_list() {
 
     status=($(sed -n -e 's/.*\"status\": \"\(.*\)\",/\1/p' $storage_vol_list))
     size=($(sed -n -e 's/.*\"size\": \"\(.*\)\",/\1/p' $storage_vol_list))
-    for ((i = 0 ; i < ${#name[@]}; ++i ))
+    for ((i = 0 ; i < ${#vol_name[@]}; ++i ))
     do
-	printf "%-16s" ${name[$i]}
+	printf "%-16s" ${vol_name[$i]}
 	printf "%8s " ${status[$i]}
 	printf "%8s " "$((${size[$i]} / 1024 ** 3 ))" # show Byte to GB
 	printf GB
