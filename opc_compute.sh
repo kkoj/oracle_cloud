@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-06-18 01:35:10 katsu> 
+## Time-stamp: <2016-08-01 01:11:03 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -37,6 +37,7 @@ declare -a INSTANCE_UUID        # instance name(uuid)
 declare -a SECRULE              # secrule name
 declare -a SECLIST              # seclist name
 declare -a SSHKEY               # sshkey name
+declare -a ORCHESTRATION        # orchestration name
 
 SESSION_ID="$CONF_DIR/temp-compute.$$"    # temporary text file for auth info
 COOKIE_FILE="$CONF_DIR/compute_cookie-$OPC_DOMAIN"
@@ -132,7 +133,7 @@ delete(){
     echo "   1: instance"
     echo "   2: storage volume"
     echo "   3: global IP address"
-    echo "   4: above all, seclist, secrule, sshkey"
+    echo "   4: above all, seclist, secrule, sshkey, orchestration"
     echo
     echo -n "Choose 1,2,3,4: "
     read ans1
@@ -271,12 +272,18 @@ delete(){
 	    DEFAULT_SECRULE=0
 	    secrule_list
 	    sshkey_list
+	    orchestration_list
 	    echo
 	    echo "Do you want to delete these on $OPC_DOMAIN site?"
 	    echo -n "(1:Yes / 2:Only $OPC_ACCOUNT's / 3:No): "
 	    read ans2
 	    case $ans2 in
 		1 | [Yy]* )
+		    # orchestration
+		    for ((i = 0 ; i < ${#ORCHESTRATION[@]}; ++i ))
+		    do
+			orchestration_delete ${ORCHESTRATION[$i]}
+		    done
 		    # instance
                     for ((i = 0 ; i < ${#INSTANCE_UUID[@]};++i ))
 		    do
@@ -315,6 +322,17 @@ delete(){
 		    done
 		    ;;
 		2 | [Oo]* )
+		    # orchestration
+		    for ((i = 0 ; i < ${#ORCHESTRATION[@]}; ++i ))
+		    do
+			echo $i
+                    user1=$(echo ${ORCHESTRATION[$i]} \
+                        | sed -n -e 's/\([^/]*\)\/.*/\1/p')
+			echo yyy $user1
+                    if [ "$user1" = "$OPC_ACCOUNT" ]; then
+		    orchestration_delete ${ORCHESTRATION[$i]}
+                    fi
+		    done
 		    # instance
                     for ((i = 0 ; i < ${#INSTANCE_UUID[@]};++i ))
 		    do
@@ -862,8 +880,7 @@ orchestration(){
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/orchestration/Compute-$OPC_DOMAIN/ \
 	| $JQ | tee $O_FILE \
-	| sed -n -e 's/.*\"name\": \"\/[^/]*\/\([^/]*\/[^/]*\/[^/\]*\).*/\1/p'\
-        | uniq
+        | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\",/\1/p'
 }
 
 orchestration_container(){
@@ -884,6 +901,12 @@ orchestration_delete(){
 	    -w '%{http_code}' \
 	    $IAAS_URL/orchestration/Compute-$OPC_DOMAIN/$ans )
     else
+	$CURL -X PUT \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/orchestration/Compute-$OPC_DOMAIN/$1?action=STOP
+
 	ret=$($CURL -X DELETE \
 	    -H "Content-Type: application/oracle-compute-v3+json" \
 	    -H "Cookie: $COMPUTE_COOKIE" \
@@ -897,6 +920,27 @@ orchestration_delete(){
     else
 	echo $ret
     fi
+}
+
+orchestration_list(){
+    O_FILE=/tmp/orchestration-$OPC_DOMAIN
+    ORCHESTRATION=($($CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/orchestration/Compute-$OPC_DOMAIN/ \
+	| $JQ | tee $O_FILE \
+	| grep -B 1 "oplans\":" \
+        | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\",/\1/p'))
+    
+    echo
+    echo ORCHESTRATION
+    echo "-------------------------------------"
+    for (( i=0 ; i < ${#ORCHESTRATION[@]}; i++ ))
+    do
+    echo "${ORCHESTRATION[$i]}"
+    done
+    echo "-------------------------------------"
+
 }
 
 role() {
