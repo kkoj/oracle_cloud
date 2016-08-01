@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-08-01 01:11:03 katsu> 
+## Time-stamp: <2016-08-01 18:55:43 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -346,7 +346,7 @@ delete(){
 	       	    for ((i = 0 ; i < ${#vol_name[@]};++i ))
 		    do
 			user1=$(echo ${vol_name[$i]} \
-			       | sed -n -e 's/[^/]*\/\([^/]*\)\/.*/\1/p')
+			    | sed -n -e 's/\([^/]*\)\/.*/\1/p')
 			if [ "$user1" = "$OPC_ACCOUNT" ]; then
 			    storage_volume_delete ${vol_name[$i]}
 			fi
@@ -923,7 +923,7 @@ orchestration_delete(){
 }
 
 orchestration_list(){
-    O_FILE=/tmp/orchestration-$OPC_DOMAIN
+    O_FILE=$CONF_DIR/orchestration-$OPC_DOMAIN
     ORCHESTRATION=($($CURL -X GET \
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
@@ -941,6 +941,7 @@ orchestration_list(){
     done
     echo "-------------------------------------"
 
+    rm $O_FILE
 }
 
 role() {
@@ -1250,8 +1251,8 @@ storage_volume_delete() {
 	ret=$($CURL -X DELETE -H "Cookie: $COMPUTE_COOKIE" \
 	    -H "Content-Type: application/oracle-compute-v3+json" \
 	    -w '%{http_code}' \
-	    -d "{ \"name\": \"$1\"}" \
-	    $IAAS_URL/storage/volume/$1 )
+	    -d "{ \"name\": \"Compute-$OPC_DOMAIN/$1\"}" \
+	    $IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/$1 )
     fi
     status=$(echo $ret | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
     # If successful, "HTTP/1.1 204 No Content" is returned.
@@ -1269,7 +1270,7 @@ storage_volume_info() {
 }
 
 storage_volume_list() {
-    storage_vol_list=/tmp/storage_vol_list-$OPC_DOMAIN
+    storage_vol_list=$CONF_DIR/storage_vol_list-$OPC_DOMAIN
     echo "-------------------------------------------------------------"
     echo "                   ### STORAGE VOLUME ###"
     echo "-------------------------------------------------------------"
@@ -1278,7 +1279,7 @@ storage_volume_list() {
 	$IAAS_URL/storage/volume/Compute-$OPC_DOMAIN/ \
  	| $JQ \
 	| tee $storage_vol_list \
-	| sed -n -e 's/.*\"name\":.*\/\(.*\)\",/\1/p' ))
+	| sed -n -e 's/.*\"name\":.*\/\(.*\/.*\)\",/\1/p' ))
 
     status=($(sed -n -e 's/.*\"status\": \"\(.*\)\",/\1/p' $storage_vol_list))
     size=($(sed -n -e 's/.*\"size\": \"\(.*\)\",/\1/p' $storage_vol_list))
@@ -1290,7 +1291,7 @@ storage_volume_list() {
 	printf GB
 	printf "\n"
     done
-    rm $storage_vol_list
+#    rm $storage_vol_list
 }
 
 storage_attachment() {
@@ -1456,13 +1457,13 @@ case "$ARG" in
 	get_cookie
 	storage_volume_info
 	;;
-    storage-volume-list)
-	get_cookie
-	storage_volume_list
-	;;
     storage-volume-create)
 	get_cookie
 	storage_volume_create
+	;;
+    storage-volume-delete)
+	get_cookie
+	storage_volume_delete
 	;;
     # Under construction
     create-minimal)
