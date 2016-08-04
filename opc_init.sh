@@ -1,4 +1,6 @@
-## Time-stamp: <2016-06-01 00:04:28 katsu>
+#!/bin/bash
+
+## Time-stamp: <2016-06-16 09:43:18 katsu>
 ##
 ## parameters
 ##
@@ -189,14 +191,56 @@ ARCHIVE_URL="$OPC_URL"/v0/Storage-"$OPC_DOMAIN"
 
 # unser construction
 # show or change configuration
+
 config() {
 
+    echo '*' default setting
+    echo "-----------------------"
+
     # show $CONF_DIR files
-    domain_config=( `ls -1 $CONF_DIR | sed -n -e /^config-[^main$]/p` )
-    for ((x = 0 ; x < ${#domain_config[@]}; ++x ))
+    main_config=`ls -l $CONF_DIR/config-main \
+      | sed -e 's/.* -> .*\(config-.*$\)/\1/'`
+
+    domain_configs=( `ls -1 $CONF_DIR \
+      | sed -n -e /^config-[^main$]/p` )
+
+    for ((x = 0 ; x < ${#domain_configs[@]}; ++x ))
+
     do
-	echo ${domain_config[$x]} | sed -e 's/config-//'
-	cat $CONF_DIR/${domain_config[$x]}
-	echo
+	y=$(($x + 1))
+	if [ "$main_config" == "${domain_configs[$x]}" ];then
+	    preset_config=`echo ${domain_configs[$x]} | sed -e 's/config-//'`
+	    echo "$y * $preset_config"
+	else
+	    domain_config=`echo ${domain_configs[$x]} | sed -e 's/config-//'`
+	    echo "$y   $domain_config"
+	fi
+
     done
+    echo "-----------------------"
+    echo "Change default setting or make new configuration?"
+    echo -n "([C]hange/[N]ew): "
+    read ans3
+    case $ans3 in
+        [Cc]*)
+	    echo -n "Number of default setting is: "
+	    read ans4
+	    y=ans4
+	    x=$((y - 1))
+	    if [ -f "$CONF_DIR/${domain_configs[$x]}" ];then
+		ln -sf $CONF_DIR/${domain_configs[$x]} $CONF_DIR/config-main
+	    else
+		echo "choice another number"
+	    fi
+	    ;;
+        [Nn]*)
+	    set_iaas_url	
+	    set_opc_domain
+	    set_opc_account
+	    set_opc_password
+	    make_temp_config
+	    ;;
+	*) exit 1
+	   ;;
+    esac
 }
