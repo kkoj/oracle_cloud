@@ -1,9 +1,15 @@
 Oracle Cloud "Hello World Kit"
 
 Oracle Cloud の API やネットワークを利用するためのアイデアを提供しています。
-いかんせん急ごしらえのツールなので非売品かつ無保証です。
+非売品かつ無保証です。
 それでもOracle CloudのPOCや使い方を理解するには便利だと思います。
 ComputeとStorageクラウドサービスで利用できます。
+
+つぎの内容があります。
+
+ opc_compute.sh  Computeサービス用スクリプト
+ opc_storage.sh  Storageサービス用スクリプト
+ opc_init.sh     共通スクリプト
 
 0.動作環境
 
@@ -31,6 +37,12 @@ ComputeとStorageクラウドサービスで利用できます。
   環境設定 (Cygwin,Linux,Mac)
 
   次のコマンドを入力します。
+
+  (proxyサーバを利用しているときのみ)
+  --
+  $ git config --global http.proxy http://<your.proxy.hostname>:8080
+  $ git config --global https.proxy http://<your.proxy.hostname>:8080
+  --
 
   $ git clone https://github.com/kkoj/oracle_cloud.git
   $ echo 'export PATH=$PATH:$HOME/oracle_cloud' >> .bash_profile
@@ -84,9 +96,9 @@ OPC_PASS="password"
    $ opc_compute.sh auth
    Authenticated with cache file compute_cookie-"your domain"
 
-  これはキャシュファイルを用いているためです。
+  これはキャッシュファイルを用いているためです。
   認証にかかる時間はリスエストが多くなると大きなオーバーヘッドです。
-  これをキャシュファイルは削減しています。
+  これをキャッシュ利用で削減しています。
 
   Oracle Cloud のホストサーバと今使っている端末の時計(unix 時間)の
   あいだには誤差があります。
@@ -97,9 +109,9 @@ OPC_PASS="password"
 
   これらは get_cookie()内で echo と date で確認できるようにしています。
 
-3. コマンドライン
+3. コマンドライン例
 
-   $ opc_compute.sh show
+   $ opc_compute.sh list
    $ opc_storage.sh list
 
 Usage: opc_compute.sh [-l "your domain" ] [ options ]
@@ -112,7 +124,8 @@ Usage: opc_compute.sh [-l "your domain" ] [ options ]
   imagelist      -- show OS and disk size template
   launchplan     -- make an instance for temporary
   list           -- list all instance,ipreservation,storage volume
-  delete         -- delete objects except JCS,DBCS auto making objects.
+  delete         -- delete objects except JCS,DBCS auto making objects
+  config         -- make new configuration or change default setting
 
 Usage: opc_storage.sh [-l "your domain" ] [ options ]
 
@@ -123,6 +136,7 @@ Usage: opc_storage.sh [-l "your domain" ] [ options ]
   restore        -- restore archived file
   upload         -- upload local file
   delete         -- delete container or container/object
+  config         -- make new configuration or change default setting
 
 When you want to down load archived files, restore it first.
 

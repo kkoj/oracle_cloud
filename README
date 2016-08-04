@@ -1,9 +1,15 @@
 Oracle Cloud "Hello World Kit"
 
 There is some idea and solution for Oracle Cloud Service API and network.
-Just being ad-hook hack, it is not for sale and no warranty.
+It is not for sale and no warranty.
 But It is useful for POC or understanding how to use Oracle Cloud Service.
 These scripts cover "Compute","Storage" cloud service.
+
+ It contains,
+
+ opc_compute.sh    Compute Service script
+ opc_storage.sh    Storage Service Script
+ opc_init.sh       common script
 
 0. Supported Environment
 
@@ -31,6 +37,12 @@ These scripts cover "Compute","Storage" cloud service.
   Environment Settings (Cygwin,Linux,Mac)
 
   Input the next lines,
+
+  (only when you are using proxy)
+  --
+  $ git config --global http.proxy http://<your.proxy.hostname>:8080
+  $ git config --global https.proxy http://<your.proxy.hostname>:8080
+  --
 
   $ git clone https://github.com/kkoj/oracle_cloud.git
   $ echo 'export PATH=$PATH:$HOME/oracle_cloud' >> .bash_profile
@@ -98,9 +110,9 @@ OPC_PASS="password"
 
   There is echo and date options in get_cookie().
 
-3. command line
+3. command line example
 
-   $ opc_compute.sh show
+   $ opc_compute.sh list
    $ opc_storage.sh list
 
 Usage: opc_compute.sh [-l "your domain" ] [ options ]
@@ -113,7 +125,8 @@ Usage: opc_compute.sh [-l "your domain" ] [ options ]
   imagelist      -- show OS and disk size template
   launchplan     -- make an instance for temporary
   list           -- list all instance,ipreservation,storage volume
-  delete         -- delete objects except JCS,DBCS auto making objects.
+  delete         -- delete objects except JCS,DBCS auto making objects
+  config         -- make new configuration or change default setting
 
 Usage: opc_storage.sh [-l "your domain" ] [ options ]
 
@@ -124,6 +137,7 @@ Usage: opc_storage.sh [-l "your domain" ] [ options ]
   restore        -- restore archived file
   upload         -- upload local file
   delete         -- delete container or container/object
+  config         -- make new configuration or change default setting
 
 When you want to down load archived files, restore it first.
 
