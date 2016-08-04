@@ -1,10 +1,12 @@
 #!/bin/bash
 #
-# Time-stamp: <2016-05-31 13:24:51 katsu>
+# Time-stamp: <2016-06-02 14:50:25 katsu>
 #
 # Some program were needed for this script
 #
 # "curl"
+
+CURL="curl -s"
 
 DIRNAME=`dirname $0`
 . $DIRNAME/opc_init.sh
@@ -289,6 +291,9 @@ case "$ARG" in
 	get_auth
 	archive_upload
 	;;
+    config)
+	config
+	;;
     create)
 	get_auth
 	container_create
@@ -345,16 +350,16 @@ case "$ARG" in
 	;;
     *)
 	cat <<-EOF
-
 	Usage: opc_storage.sh [-l "your domain" ] [ options ]
 
-	  options:
-	  list           -- list container/object
-	  create         -- make new container for standard storage
-	  create-archive -- make new container for archive storage
-	  restore        -- restore archived file
-	  upload         -- upload local file
-	  delete         -- delete container or container/object
+	 options:
+	 list           -- list container/object
+	 create         -- make new container for standard storage
+	 create-archive -- make new container for archive storage
+	 restore        -- restore archived file
+	 upload         -- upload local file
+	 delete         -- delete container or container/object
+	 config         -- make new configuration or change default setting
 
 	When you want to down load archived files, restore it first.
 
