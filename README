@@ -11,6 +11,9 @@ These scripts cover "Compute","Storage" cloud service.
  opc_storage.sh    Storage Service Script
  opc_init.sh       common script
 
+ If you could not get these file with git, get only this 3 files with web
+ browser.
+
 0. Supported Environment
 
   bash,python,curl are needed for this scripts.

@@ -5,7 +5,8 @@ Oracle Cloud の API やネットワークを利用するためのアイデア�
 それでもOracle CloudのPOCや使い方を理解するには便利だと思います。
 ComputeとStorageクラウドサービスで利用できます。
 
-つぎの内容があります。
+つぎの内容があります。git でうまく取得できないときはこの3ファイルのみでも
+取得してください。
 
  opc_compute.sh  Computeサービス用スクリプト
  opc_storage.sh  Storageサービス用スクリプト
