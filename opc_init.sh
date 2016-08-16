@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## Time-stamp: <2016-06-16 09:43:18 katsu>
+## Time-stamp: <2016-08-16 14:28:28 katsu>
 ##
 ## parameters
 ##
@@ -45,7 +45,8 @@ set_iaas_url (){
 	sed -i -e '/^IAAS_URL=.*$/d' $CONF_DIR/config-temp
     fi
     echo "Please input your IaaS endpoint"
-    echo "It is displayed on the right corner of compute cloud dashboard"
+    echo "It is displayed on the right side of compute cloud dashboard"
+    echo "as \"REST Endpoint\""
     echo
     echo "   like: https://api.compute.us2.oraclecloud.com"
     echo
@@ -98,11 +99,11 @@ make_temp_config(){
 	echo "   3 ACCOUNT ID:    $OPC_ACCOUNT"
 	echo "   4 PASSWORD:      $OPC_PASS"
 	echo
-	echo "OK or change parameter ?"
-	echo -n "(Yes/No/1/2/3/4) "
+	echo " It's done or input # of changing parameter"
+	echo -n "(Yes/no/1/2/3/4) "
 	read ans2
 	case $ans2 in
-            [Yy]*)
+            [Yy]* | * )
 		mv $CONF_DIR/config-temp $CONF_DIR/config-$OPC_DOMAIN
 		ln -sf $CONF_DIR/config-$OPC_DOMAIN $CONF_DIR/config-main
 		main_done=1
@@ -122,8 +123,6 @@ make_temp_config(){
 	    4 )
 		set_opc_password
 		;;
-	    *) exit 1
-	       ;;
 	esac
     else
 
