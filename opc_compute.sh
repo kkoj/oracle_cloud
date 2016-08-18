@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-08-01 18:55:43 katsu> 
+## Time-stamp: <2016-08-18 14:08:32 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -405,7 +405,6 @@ delete(){
 imagelist_info() {
 
     imagelist=/tmp/imagelist-$OPC_DOMAIN
-
     imagename=($($CURL -X GET -H "Cookie:$COMPUTE_COOKIE" \
 	$IAAS_URL/imagelist/oracle/public/ | $JQ | tee $imagelist \
         | sed -n -e 's/.*\"name\": \"\/oracle\/public\/\(.*\)\",/\1/p'))
@@ -414,7 +413,7 @@ imagelist_info() {
     imagedesc=($(sed -n -e 's/.*\"description\": \(.*\),/\1/p' $imagelist ))
     echo "         SHAPE                      \"DESCRIPTION\""
     echo "-------------------------------------------------------------"
-    for ((i = 0 ; i < ${#IMAGEDESC[@]};++i ))
+    for ((i = 0 ; i < ${#imagedesc[@]};++i ))
     do
     printf "%-35s %s\n" ${imagename[$i]} ${imagedesc[$i]}
     done
