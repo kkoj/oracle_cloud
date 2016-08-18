@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-08-18 14:08:32 katsu> 
+## Time-stamp: <2016-08-18 14:22:57 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -803,7 +803,6 @@ launchplan() {
 
     echo "What is the sshkey ? (you must upload sshkey first.)"
     read SSHKEY
-
     ret=$($CURL -X POST \
 	-H "Content-Type: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
@@ -1127,8 +1126,8 @@ shape() {
     shape=($($CURL -X GET -H "Cookie:$COMPUTE_COOKIE" \
 	$IAAS_URL/shape/ | $JQ | tee $shape_list \
         | sed -n -e 's/.*\"name\": \"\(.*\)\",/\1/p'))
-    CORE=($(sed -n -e 's/.*\"cpus\": \(.*\)\.0,/\1/p' $shape_list ))
-    RAM=($(sed -n -e 's/.*\"ram\": \(.*\),/\1/p' $shape_list ))
+    core=($(sed -n -e 's/.*\"cpus\": \(.*\)\.0,/\1/p' $shape_list ))
+    ram=($(sed -n -e 's/.*\"ram\": \(.*\),/\1/p' $shape_list ))
     _IFS=$IFS
     IFS=$'\n'
 
@@ -1138,15 +1137,15 @@ shape() {
 
     for ((i = 0 ; i < ${#shape[@]};++i ))
     do
-    RAM_GB=$(( ${RAM[$i]} / 1024 ))
-    OCPU=$((${CORE[$i]} / 2))
+    ram_gb=$(( ${ram[$i]} / 1024 ))
+    ocpu=$((${core[$i]} / 2))
 
-    printf "%s  \t %5d\t" ${SHAPE[$i]} ${CORE[$i]}
-    printf "%5d  %5d\n" $OCPU $RAM_GB
+    printf "%s  \t %5d\t" ${shape[$i]} ${core[$i]}
+    printf "%5d  %5d\n" $ocpu $ram_gb
 
     done
     IFS=$_IFS
-    rm $shape_list
+#    rm $shape_list
 }    
 
 sshkey(){
