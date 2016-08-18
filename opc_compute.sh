@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-08-18 14:22:57 katsu> 
+## Time-stamp: <2016-08-18 14:24:03 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -1145,7 +1145,7 @@ shape() {
 
     done
     IFS=$_IFS
-#    rm $shape_list
+    rm $shape_list
 }    
 
 sshkey(){
