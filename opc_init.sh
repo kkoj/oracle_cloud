@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## Time-stamp: <2016-08-16 14:28:28 katsu>
+## Time-stamp: <2016-09-03 16:02:15 katsu>
 ##
 ## parameters
 ##
@@ -201,7 +201,7 @@ config() {
       | sed -e 's/.* -> .*\(config-.*$\)/\1/'`
 
     domain_configs=( `ls -1 $CONF_DIR \
-      | sed -n -e /^config-[^main$]/p` )
+      | sed -n -e /^config-/p | sed -e /^config-main$/d` )
 
     for ((x = 0 ; x < ${#domain_configs[@]}; ++x ))
 
