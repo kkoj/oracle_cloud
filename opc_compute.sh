@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2017-06-13 22:15:24 katsu> 
+## Time-stamp: <2017-06-13 22:34:27 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -9,8 +9,8 @@
 ## "jq or python"
 ## "base64"
 
-DEBUG="on"
-#DEBUG="off"
+#DEBUG="on"
+DEBUG="off"
 #CURL="curl -s -x http://your.proxy:80"
 CURL="curl -s"
 #JQ="jq . "
