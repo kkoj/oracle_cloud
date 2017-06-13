@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2017-06-13 22:34:27 katsu> 
+## Time-stamp: <2017-06-13 22:44:11 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -729,7 +729,7 @@ ipexchange_list() {
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/network/v1/ipnetworkexchange/Compute-$OPC_DOMAIN/ \
-	| $JQ | tee $I_FILE \
+	| $JQ | tee $IE_FILE \
         | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\",/\1/p'))
     
     echo
@@ -1097,7 +1097,7 @@ route_list() {
         -H "Accept: application/oracle-compute-v3+json" \
 	-H "Cookie: $COMPUTE_COOKIE" \
 	$IAAS_URL/network/v1/route/Compute-$OPC_DOMAIN/ \
-	| $JQ | tee $I_FILE \
+	| $JQ | tee $R_FILE \
         | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\",/\1/p'))
     
     echo
