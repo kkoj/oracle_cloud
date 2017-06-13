@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## Time-stamp: <2016-08-18 14:24:03 katsu> 
+## Time-stamp: <2017-06-13 22:15:24 katsu> 
 ##
 
 ## Some program were needed for this script
@@ -9,7 +9,8 @@
 ## "jq or python"
 ## "base64"
 
-
+DEBUG="on"
+#DEBUG="off"
 #CURL="curl -s -x http://your.proxy:80"
 CURL="curl -s"
 #JQ="jq . "
@@ -38,9 +39,14 @@ declare -a SECRULE              # secrule name
 declare -a SECLIST              # seclist name
 declare -a SSHKEY               # sshkey name
 declare -a ORCHESTRATION        # orchestration name
+declare -a IPNETWORK            # ipnetwork name
+declare -a VIRTUALNIC           # virtualnic name
+declare -a VIRTUALNICSET        # virtualnic set name
+declare -a ROUTES               # Routes name
+declare -a VPN                  # VPN Gateway name
 
-SESSION_ID="$CONF_DIR/temp-compute.$$"    # temporary text file for auth info
-COOKIE_FILE="$CONF_DIR/compute_cookie-$OPC_DOMAIN"
+SESSION_ID="$CONF_DIR/tmp-compute.$$"    # temporary text file for auth info
+COOKIE_FILE="$CONF_DIR/tmp-compute_cookie-$OPC_DOMAIN"
 COMPUTE_COOKIE=""
 
 ##
@@ -84,7 +90,9 @@ get_cookie() {
     fi
 
     # uncomment next line for no caching $COOKIE_FILE
-    #   rm $COOKIE_FILE
+    if [ $DEBUG != "on" ]; then
+	rm $COOKIE_FILE
+    fi
 }
 
 _get_cookie() {
@@ -96,7 +104,7 @@ _get_cookie() {
              \"password\":\"$OPC_PASS\"}" \
 	$IAAS_URL/authenticate/ -D $SESSION_ID )
     COMPUTE_COOKIE=$( grep -i Set-cookie $SESSION_ID | cut -d';' -f 1 \
-	| cut -d' ' -f 2 | tee $COOKIE_FILE )
+			    | cut -d' ' -f 2 | tee $COOKIE_FILE )
 
     status=$(echo $ret | sed -e 's/.*\([0-9][0-9][0-9]$\)/\1/')
 
@@ -113,7 +121,9 @@ _get_cookie() {
 	echo "Please check IAAS_URL on the web dashboard."
 	echo "It is the REST Endpoint."
     fi
-    rm $SESSION_ID
+    if [ $DEBUG != "on" ]; then
+	rm $SESSION_ID
+    fi
 }
 
 ##
@@ -133,7 +143,7 @@ delete(){
     echo "   1: instance"
     echo "   2: storage volume"
     echo "   3: global IP address"
-    echo "   4: above all, seclist, secrule, sshkey, orchestration"
+    echo "   4: above all, seclist, secrule, sshkey, orchestration, ipnetwork"
     echo
     echo -n "Choose 1,2,3,4: "
     read ans1
@@ -273,6 +283,9 @@ delete(){
 	    secrule_list
 	    sshkey_list
 	    orchestration_list
+	    route_list
+	    ipexchange_list
+	    ipnetwork_list
 	    echo
 	    echo "Do you want to delete these on $OPC_DOMAIN site?"
 	    echo -n "(1:Yes / 2:Only $OPC_ACCOUNT's / 3:No): "
@@ -283,6 +296,21 @@ delete(){
 		    for ((i = 0 ; i < ${#ORCHESTRATION[@]}; ++i ))
 		    do
 			orchestration_delete ${ORCHESTRATION[$i]}
+		    done
+		    # route
+		    for ((i = 0 ; i < ${#ROUTE[@]}; ++i ))
+		    do
+			route_delete ${ROUTE[$i]}
+		    done
+		    # ipexchange
+		    for ((i = 0 ; i < ${#IPEXCHANGE[@]}; ++i ))
+		    do
+			ipexchange_delete ${IPEXCHANGE[$i]}
+		    done
+		    # ipnetwork
+		    for ((i = 0 ; i < ${#IPNETWORK[@]}; ++i ))
+		    do
+			ipnetwork_delete ${IPNETWORK[$i]}
 		    done
 		    # instance
                     for ((i = 0 ; i < ${#INSTANCE_UUID[@]};++i ))
@@ -404,7 +432,7 @@ delete(){
 
 imagelist_info() {
 
-    imagelist=/tmp/imagelist-$OPC_DOMAIN
+    imagelist=$CONF_DIR/tmp-imagelist-$OPC_DOMAIN
     imagename=($($CURL -X GET -H "Cookie:$COMPUTE_COOKIE" \
 	$IAAS_URL/imagelist/oracle/public/ | $JQ | tee $imagelist \
         | sed -n -e 's/.*\"name\": \"\/oracle\/public\/\(.*\)\",/\1/p'))
@@ -418,7 +446,10 @@ imagelist_info() {
     printf "%-35s %s\n" ${imagename[$i]} ${imagedesc[$i]}
     done
     IFS=$_IFS
-    rm $imagelist
+
+    if [ $DEBUG != "on" ]; then
+	rm $imagelist
+    fi
 }
 
 imagelist_user_defined_info() {
@@ -470,7 +501,7 @@ instance_delete() {
 
 instances_list() {
 
-    instance=/tmp/instance-$OPC_DOMAIN
+    instance=$CONF_DIR/tmp-instance-$OPC_DOMAIN
     if [ "$1" == list ]; then
 	echo
 	echo "          OBJECT list for the Domain $OPC_DOMAIN"
@@ -532,7 +563,7 @@ instances_list() {
 
 	for ((m = 0 ; m < ${#VCABLE_UUID_ASSOC[@]}; ++m ))
 	do
-	    if [ ${vcable_uuid_instance[$i]} = ${VCABLE_UUID_ASSOC[$m]} ];
+	    if [[ ${vcable_uuid_instance[$i]} = ${VCABLE_UUID_ASSOC[$m]} ]];
 	    then
 		GIP_INSTANCE[$i]=${GIP_USE_ASSOC[$m]}
 		if [ "$1" == list ]; then
@@ -568,17 +599,19 @@ instances_list() {
 	done
 	echo "-------------------------------------------------------------"
 	echo "hosts for global network"
-	echo "-------------------------------------------------------------"
+ 	echo "-------------------------------------------------------------"
 	for ((i = 0 ; i < ${#INSTANCE_UUID[@]};++i ))
 	do
-	    if [ ${GIP_INSTANCE[$i]} != "" ]; then
+	    if [[ ${GIP_INSTANCE[$i]} != "" ]]; then
 	    printf "%-16s" ${GIP_INSTANCE[$i]} 
 	    printf "%-16s " ${host_name[$i]}
 	    printf "\n"
 	    fi
 	done
     fi
-    rm $instance
+    if [ $DEBUG != "on" ]; then
+	rm $instance
+    fi
 }
 
 ipassociation() {
@@ -593,7 +626,7 @@ ipassociation_list() {
     # ipassociation: "name"(uuid),"reservation"(uuid),"vcable"(uuid)
     # ipreservation: "name"(uuid),"ip"(uuid)
 
-    ip_assoc=/tmp/ipassociation-$OPC_DOMAIN
+    ip_assoc=$CONF_DIR/tmp-ipassociation-$OPC_DOMAIN
 
     # get user account name
 
@@ -635,8 +668,106 @@ ipassociation_list() {
 	VCABLE_UUID_ASSOC[${#VCABLE_UUID_ASSOC[@]}]=${vcable_assoc[$n]}
 	GIP_USE_ASSOC[${#GIP_USE_ASSOC[@]}]=${global_ip_assoc[$n]}
     done
+    if [ $DEBUG != "on" ]; then
 	rm $ip_assoc-${user_id_assoc[$m]}
+    fi
     done
+}
+
+ipnetwork_list() {
+
+    I_FILE=$CONF_DIR/tmp-ipnetwork-$OPC_DOMAIN
+    IPNETWORK=($($CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/network/v1/ipnetwork/Compute-$OPC_DOMAIN/ \
+	| $JQ | tee $I_FILE \
+        | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\",/\1/p'))
+    
+    echo
+    echo IPNETWORK
+    echo "-------------------------------------"
+    for (( i=0 ; i < ${#IPNETWORK[@]}; i++ ))
+    do
+    echo "${IPNETWORK[$i]}"
+    done
+    echo "-------------------------------------"
+    if [ $DEBUG != "on" ]; then
+		rm $I_FILE
+    fi
+}
+
+ipnetwork_delete() {
+    if [ "$1" = "" ]; then
+	echo "What is the name of ipnetwork to delete ?"
+	read ans
+	ret=$($CURL -X DELETE \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/network/v1/ipnetwork/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans)
+    else
+	ret=$($CURL -X DELETE \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/network/v1/ipnetwork/Compute-$OPC_DOMAIN/$1)
+    fi
+    status=$(echo $ret | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
+    # If successful, "HTTP/1.1 204 No Content" is returned.
+    if [ "$status" = 204 ]; then
+	echo "$1""$ans"" deleted"
+    else
+	echo $ret
+    fi
+}
+
+ipexchange_list() {
+
+    IE_FILE=$CONF_DIR/tmp-ipexchange-$OPC_DOMAIN
+    IPEXCHANGE=($($CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/network/v1/ipnetworkexchange/Compute-$OPC_DOMAIN/ \
+	| $JQ | tee $I_FILE \
+        | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\",/\1/p'))
+    
+    echo
+    echo IPEXCHANGE
+    echo "-------------------------------------"
+    for (( i=0 ; i < ${#IPEXCHANGE[@]}; i++ ))
+    do
+    echo "${IPEXCHANGE[$i]}"
+    done
+    echo "-------------------------------------"
+    if [ $DEBUG != "on" ]; then
+		rm $IE_FILE
+    fi
+}
+
+ipexchange_delete() {
+    if [ "$1" = "" ]; then
+	echo "What is the name of ipexchange to delete ?"
+	read ans
+	ret=$($CURL -X DELETE \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/network/v1/ipnetworkexchange/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans)
+    else
+	ret=$($CURL -X DELETE \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/network/v1/ipnetworkexchange/Compute-$OPC_DOMAIN/$1)
+    fi
+    status=$(echo $ret | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
+    # If successful, "HTTP/1.1 204 No Content" is returned.
+    if [ "$status" = 204 ]; then
+	echo "$1""$ans"" deleted"
+    else
+	echo $ret
+    fi
 }
 
 ipreservation() {
@@ -713,7 +844,7 @@ ipreservation_list() {
     # We have to link host id to ipreservation id with ipassociation_list().
     # Some time ipreservation id has no linkage with any instance id.
 
-    ip_reserv=/tmp/ipreservation-$OPC_DOMAIN
+    ip_reserv="$CONF_DIR"/tmp-ipreservation-"$OPC_DOMAIN"
 
     # get account name which use global IP address
     # using "Accept: application/oracle-compute-v3+directory+json",
@@ -791,7 +922,9 @@ ipreservation_list() {
 		fi
             done
 	done
-	rm $ip_reserv-${user_id_re[$m]}
+	if [ $DEBUG != "on" ]; then
+	    rm $ip_reserv-${user_id_re[$m]}
+	fi
     fi
     done
 }
@@ -871,6 +1004,14 @@ machineimage_info(){
     echo
 }
 
+nic() {
+    $CURL -X GET -H "Content-Type: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+        $IAAS_URL/network/v1/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/ | $JQ
+    echo
+}
+
+
 orchestration(){
     O_FILE=/tmp/orchestration-$OPC_DOMAIN
     $CURL -X GET \
@@ -938,14 +1079,63 @@ orchestration_list(){
     echo "${ORCHESTRATION[$i]}"
     done
     echo "-------------------------------------"
-
-    rm $O_FILE
+    if [ $DEBUG != "on" ]; then
+	rm $O_FILE
+    fi
 }
 
 role() {
     sed -e 's/nimbula=//' $COOKIE_FILE | base64 -d \
 	| sed -e 's/Compute-$OPC_DOMAIN\/\(.*\)/\1/'
     echo
+}
+
+route_list() {
+
+    R_FILE=$CONF_DIR/tmp-route-$OPC_DOMAIN
+    ROUTE=($($CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/network/v1/route/Compute-$OPC_DOMAIN/ \
+	| $JQ | tee $I_FILE \
+        | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\",/\1/p'))
+    
+    echo
+    echo ROUTE
+    echo "-------------------------------------"
+    for (( i=0 ; i < ${#ROUTE[@]}; i++ ))
+    do
+    echo "${ROUTE[$i]}"
+    done
+    echo "-------------------------------------"
+    if [ $DEBUG != "on" ]; then
+		rm $R_FILE
+    fi
+}
+
+route_delete() {
+    if [ "$1" = "" ]; then
+	echo "What is the name of route to delete ?"
+	read ans
+	ret=$($CURL -X DELETE \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/network/v1/route/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/$ans)
+    else
+	ret=$($CURL -X DELETE \
+	    -H "Content-Type: application/oracle-compute-v3+json" \
+	    -H "Cookie: $COMPUTE_COOKIE" \
+	    -w '%{http_code}' \
+	    $IAAS_URL/network/v1/route/Compute-$OPC_DOMAIN/$1)
+    fi
+    status=$(echo $ret | sed -n -e 's/.*\([0-9][0-9][0-9]$\)/\1/p')
+    # If successful, "HTTP/1.1 204 No Content" is returned.
+    if [ "$status" = 204 ]; then
+	echo "$1""$ans"" deleted"
+    else
+	echo $ret
+    fi
 }
 
 secassociation() {
@@ -1145,7 +1335,9 @@ shape() {
 
     done
     IFS=$_IFS
-    rm $shape_list
+    if [ $DEBUG != "on" ]; then
+	rm $shape_list
+    fi
 }    
 
 sshkey(){
@@ -1268,7 +1460,7 @@ storage_volume_info() {
 }
 
 storage_volume_list() {
-    storage_vol_list=$CONF_DIR/storage_vol_list-$OPC_DOMAIN
+    storage_vol_list=$CONF_DIR/tmp-storage_vol_list-$OPC_DOMAIN
     echo "-------------------------------------------------------------"
     echo "                   ### STORAGE VOLUME ###"
     echo "-------------------------------------------------------------"
@@ -1289,13 +1481,82 @@ storage_volume_list() {
 	printf GB
 	printf "\n"
     done
-#    rm $storage_vol_list
+    if [ $DEBUG != "on" ]; then
+	rm $storage_vol_list
+    fi
 }
 
 storage_attachment() {
     $CURL -X POST -H "Cookie: $COMPUTE_COOKIE" \
 	-H "Content-Type: application/oracle-compute-v3+json" \
 	$IAAS_URL/storage/attachment/Compute-$OPC_DOMAIN/$OPC_ACCOUNT/
+}
+
+vnic_list() {
+
+    V_FILE=$CONF_DIR/tmp-vnic-$OPC_DOMAIN
+    VIRTUALNIC=($($CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/network/v1/vnic/Compute-$OPC_DOMAIN/ \
+	| $JQ | tee $V_FILE \
+        | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\",/\1/p'))
+    
+    echo
+    echo VIRTUALNIC
+    echo "-------------------------------------"
+    for (( i=0 ; i < ${#VIRTUALNIC[@]}; i++ ))
+    do
+    echo "${VIRTUALNIC[$i]}"
+    done
+    echo "-------------------------------------"
+    if [ $DEBUG != "on" ]; then
+		rm $V_FILE
+    fi
+}
+vnicset_list() {
+
+    VS_FILE=$CONF_DIR/tmp-vnicset-$OPC_DOMAIN
+    VIRTUALNIC=($($CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/network/v1/vnicset/Compute-$OPC_DOMAIN/ \
+	| $JQ | tee $VS_FILE \
+        | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\",/\1/p'))
+    
+    echo
+    echo VIRTUALNICSET
+    echo "-------------------------------------"
+    for (( i=0 ; i < ${#VIRTUALNIC[@]}; i++ ))
+    do
+    echo "${VIRTUALNIC[$i]}"
+    done
+    echo "-------------------------------------"
+    if [ $DEBUG != "on" ]; then
+		rm $VS_FILE
+    fi
+}
+
+vpn_list() {
+    VPN_FILE=$CONF_DIR/vpn-$OPC_DOMAIN
+    VPN=($($CURL -X GET \
+        -H "Accept: application/oracle-compute-v3+json" \
+	-H "Cookie: $COMPUTE_COOKIE" \
+	$IAAS_URL/Compute-$OPC_DOMAIN/ \
+	| $JQ | tee $VPN_FILE \
+        | sed -n -e 's/.*\"name\": \"\/[^/]*\/\(.*\)\",/\1/p'))
+    
+    echo
+    echo VPN
+    echo "-------------------------------------"
+    for (( i=0 ; i < ${#VPN[@]}; i++ ))
+    do
+    echo "${VPN[$i]}"
+    done
+    echo "-------------------------------------"
+    if [ $DEBUG != "on" ]; then
+		rm $VPN_FILE
+    fi
 }
 
 case "$ARG" in
@@ -1355,6 +1616,16 @@ case "$ARG" in
 	get_cookie
 	ipreservation_delete
 	;;
+    ipnetwork)
+	get_cookie
+	ipexchange_list
+	ipnetwork_list
+	route_list
+	;;
+    ipnetwork-delete)
+	get_cookie
+	ipnetwork_delete
+	;;
     instance)
 	get_cookie
 	instance
@@ -1385,6 +1656,11 @@ case "$ARG" in
     machineimage)
 	get_cookie
 	machineimage
+	;;
+    nic)
+	get_cookie
+	vnic_list
+	vnicset_list
 	;;
     orchestration)
 	get_cookie
@@ -1463,6 +1739,14 @@ case "$ARG" in
 	get_cookie
 	storage_volume_delete
 	;;
+    vpn)
+	get_cookie
+	vpn_list
+	;;
+    vpn-delete)
+	get_cookie
+	vpn_delete
+	;;
     # Under construction
     create-minimal)
 	get_cookie
@@ -1473,7 +1757,7 @@ case "$ARG" in
 	;;
     secrule-list)
 	get_cookie
-      secrule_list
+	secrule_list
 	;;
     *)
 	cat <<-EOF
@@ -1489,6 +1773,7 @@ case "$ARG" in
 	 list           -- list all instance,ipreservation,storage volume
 	 delete         -- delete objects except JCS,DBCS auto making objects
 	 config         -- make new configuration or change default setting
+	 nic            -- show vNIC
 EOF
 	exit 1
 esac
